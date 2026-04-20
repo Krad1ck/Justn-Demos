@@ -1,0 +1,1861 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>JUSTN Quote Flow</title>
+<script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+import { useState, useEffect, useMemo, useRef } from "react";
+import {
+  ArrowRight,
+  ArrowLeft,
+  Check,
+  X,
+  AlertCircle,
+  Shield,
+  FileText,
+  CreditCard,
+  Download,
+  Menu,
+  Sparkles,
+  DollarSign,
+  Mail,
+  Loader2,
+  CheckCircle2,
+  Info,
+  Settings,
+  RotateCcw,
+  Lock,
+  Clock,
+  ChevronRight,
+} from "lucide-react";
+
+/* =========================================================
+   JUSTN — Customer Quote-to-Bind Prototype
+   Single-file React artifact. Configure tables below.
+   ========================================================= */
+
+/* --------- BRAND TOKENS --------- */
+const C = {
+  mint: "#7AE5C0",
+  mintSoft: "#B8F2DA",
+  mintDeep: "#5DD3AA",
+  ink: "#0E2C2A",
+  inkSoft: "#1A3D3A",
+  ink2: "#2A4D48",
+  lime: "#C8E866",
+  orange: "#F26B3A",
+  purple: "#C5A8E0",
+  cream: "#FAF7F2",
+  paper: "#FFFFFF",
+  hairline: "rgba(14,44,42,0.12)",
+};
+
+/* --------- CONFIGURABLE PRODUCT DATA ---------
+   In production this lives in admin-managed tables.
+   Edit values here to retune the prototype.
+*/
+const COVERS = [
+  {
+    id: "pi",
+    name: "Professional Indemnity",
+    short: "PI",
+    tagline: "When advice, designs, or services are called into question.",
+    chip: C.mint,
+    base: 480,
+    limits: [250000, 500000, 1000000, 2000000, 5000000],
+    defaultLimit: 1000000,
+    excesses: [1000, 2500, 5000],
+    defaultExcess: 2500,
+  },
+  {
+    id: "pl",
+    name: "Public Liability",
+    short: "PL",
+    tagline: "Spilled coffee. Tripped cables. Wrong place, wrong time.",
+    chip: C.lime,
+    base: 220,
+    limits: [1000000, 2000000, 5000000, 10000000],
+    defaultLimit: 2000000,
+    excesses: [500, 1000, 2500],
+    defaultExcess: 1000,
+  },
+  {
+    id: "sl",
+    name: "Statutory Liability",
+    short: "SL",
+    tagline: "Defence costs for unintentional regulatory breaches.",
+    chip: C.purple,
+    base: 140,
+    limits: [250000, 500000, 1000000],
+    defaultLimit: 500000,
+    excesses: [500, 1000],
+    defaultExcess: 1000,
+  },
+];
+
+// Occupations with internal risk tier and rating multiplier
+const OCCUPATIONS = [
+  { code: "IT-DEV", label: "Software developer / engineer", tier: "B", mult: 1.05 },
+  { code: "IT-PM", label: "IT project manager", tier: "B", mult: 1.1 },
+  { code: "IT-BA", label: "Business analyst", tier: "B", mult: 1.0 },
+  { code: "IT-SA", label: "Solution / enterprise architect", tier: "C", mult: 1.35 },
+  { code: "IT-SEC", label: "Cybersecurity consultant", tier: "C", mult: 1.45 },
+  { code: "IT-DATA", label: "Data analyst / scientist", tier: "B", mult: 1.05 },
+  { code: "MGT-CON", label: "Management consultant", tier: "B", mult: 1.15 },
+  { code: "MKT-CON", label: "Marketing consultant", tier: "A", mult: 0.95 },
+  { code: "HR-CON", label: "HR consultant", tier: "B", mult: 1.1 },
+  { code: "DESIGN", label: "Graphic / UX designer", tier: "A", mult: 0.9 },
+  { code: "COPY", label: "Copywriter / content writer", tier: "A", mult: 0.85 },
+  { code: "TRAIN", label: "Trainer / educator / coach", tier: "A", mult: 0.95 },
+  { code: "ACC", label: "Bookkeeper / accountant", tier: "B", mult: 1.2 },
+  { code: "GOV-CON", label: "Government contractor (general)", tier: "B", mult: 1.1 },
+  { code: "ENG-CON", label: "Engineering consultant", tier: "C", mult: 1.6, refer: true },
+  { code: "CONST-PM", label: "Construction project manager", tier: "R", refer: true },
+  { code: "FIN-ADV", label: "Financial adviser / broker", tier: "D", decline: true },
+  { code: "LAWYER", label: "Lawyer / legal practitioner", tier: "D", decline: true },
+];
+
+const REVENUE_BANDS = [
+  { id: "r1", label: "Under $100k", mult: 0.85, max: 100000 },
+  { id: "r2", label: "$100k – $250k", mult: 1.0, max: 250000 },
+  { id: "r3", label: "$250k – $500k", mult: 1.25, max: 500000 },
+  { id: "r4", label: "$500k – $1M", mult: 1.6, max: 1000000 },
+  { id: "r5", label: "$1M – $2M", mult: 2.1, max: 2000000 },
+  { id: "r6", label: "Over $2M", mult: 2.6, refer: true, max: Infinity },
+];
+
+const ENTITY_TYPES = ["Sole trader", "Limited company", "Partnership", "Trust"];
+
+const YEARS_BANDS = ["Under 1 year", "1 – 3 years", "3 – 5 years", "5 – 10 years", "Over 10 years"];
+
+const EMPLOYEE_BANDS = ["Just me", "1 – 4", "5 – 9", "10 – 19", "20+"];
+
+/* --------- RULES ENGINE ---------
+   Returns { decision: 'price' | 'refer' | 'decline', reasons: [] }
+*/
+function evaluate(data) {
+  const reasons = [];
+  let decision = "price";
+
+  const occ = OCCUPATIONS.find((o) => o.code === data.occupation);
+  if (occ?.decline) {
+    return {
+      decision: "decline",
+      reasons: [
+        {
+          code: "OCC_OUT_OF_APPETITE",
+          message: `${occ.label} is outside our current contractor scheme appetite.`,
+        },
+      ],
+    };
+  }
+  if (occ?.refer) {
+    decision = "refer";
+    reasons.push({
+      code: "OCC_REFER",
+      message: `${occ.label} requires manual underwriting review.`,
+    });
+  }
+
+  const rev = REVENUE_BANDS.find((r) => r.id === data.revenueBand);
+  if (rev?.refer) {
+    decision = "refer";
+    reasons.push({
+      code: "REV_OVER_2M",
+      message: "Annual revenue over $2M needs manual review for appropriate terms.",
+    });
+  }
+
+  if (data.priorClaims) {
+    decision = "refer";
+    reasons.push({
+      code: "PRIOR_CLAIMS",
+      message: "Prior claims or known circumstances require underwriter review.",
+    });
+  }
+
+  if (data.overseasWork && (data.overseasJurisdictions || []).some((j) => ["US", "Canada"].includes(j))) {
+    decision = "refer";
+    reasons.push({
+      code: "JUR_NORTH_AMERICA",
+      message: "Work in US or Canada requires referral due to elevated jurisdictional risk.",
+    });
+  }
+
+  if (data.subcontractors && !data.subcontractorAgreements) {
+    decision = "refer";
+    reasons.push({
+      code: "SUBBIES_NO_AGREEMENT",
+      message: "Subcontractor use without written agreements requires review.",
+    });
+  }
+
+  return { decision, reasons };
+}
+
+/* --------- RATING ENGINE ---------
+   Simple multiplier-based rating. Replace with real tables in build.
+*/
+function rate(data) {
+  const occ = OCCUPATIONS.find((o) => o.code === data.occupation);
+  const rev = REVENUE_BANDS.find((r) => r.id === data.revenueBand);
+  if (!occ || !rev) return null;
+
+  const occMult = occ.mult || 1;
+  const revMult = rev.mult || 1;
+
+  const lines = (data.selectedCovers || []).map((id) => {
+    const cover = COVERS.find((c) => c.id === id);
+    const limit = data.limits?.[id] ?? cover.defaultLimit;
+    const excess = data.excesses?.[id] ?? cover.defaultExcess;
+    const limitMult = 0.85 + Math.log10(limit / 250000 + 1) * 0.55;
+    const excessMult = excess <= 1000 ? 1.1 : excess <= 2500 ? 1.0 : 0.92;
+    const subbieLoad = data.subcontractors ? 1.08 : 1.0;
+    const overseasLoad = data.overseasWork ? 1.12 : 1.0;
+    const premium = Math.round(
+      cover.base * occMult * revMult * limitMult * excessMult * subbieLoad * overseasLoad
+    );
+    return { id, name: cover.name, limit, excess, premium };
+  });
+
+  const subtotal = lines.reduce((a, l) => a + l.premium, 0);
+  const bundleDiscount = (data.selectedCovers || []).length === 3 ? Math.round(subtotal * 0.1) : 0;
+  const adminFee = 25;
+  const fapLevy = Math.round((subtotal - bundleDiscount) * 0.005); // simulated regulatory levy
+  const net = subtotal - bundleDiscount + adminFee + fapLevy;
+  const gst = Math.round(net * 0.15);
+  const total = net + gst;
+
+  return { lines, subtotal, bundleDiscount, adminFee, fapLevy, gst, total };
+}
+
+const fmt = (n) =>
+  n.toLocaleString("en-NZ", { style: "currency", currency: "NZD", maximumFractionDigits: 0 });
+const fmtLimit = (n) => (n >= 1000000 ? `$${n / 1000000}M` : `$${(n / 1000).toFixed(0)}k`);
+
+/* --------- LOGO --------- */
+function Logo({ className = "h-9" }) {
+  return (
+    <div className={`inline-flex items-center ${className}`}>
+      <svg viewBox="0 0 110 50" className="h-full w-auto" aria-label="JUSTN">
+        {/* briefcase handle */}
+        <rect x="42" y="2" width="22" height="6" rx="2" fill="none" stroke={C.ink} strokeWidth="3" />
+        {/* speech bubble */}
+        <path
+          d="M6 10 H100 Q104 10 104 14 V36 Q104 40 100 40 H88 L82 48 L80 40 H10 Q6 40 6 36 Z"
+          fill={C.ink}
+        />
+        <text
+          x="55"
+          y="32"
+          textAnchor="middle"
+          fontFamily="Fraunces, serif"
+          fontWeight="900"
+          fontSize="20"
+          fill="white"
+          letterSpacing="1"
+        >
+          JUSTN
+        </text>
+      </svg>
+    </div>
+  );
+}
+
+/* --------- SHARED UI --------- */
+function PillButton({
+  children,
+  onClick,
+  variant = "primary",
+  icon: Icon = ArrowRight,
+  iconPosition = "right",
+  disabled = false,
+  className = "",
+  type = "button",
+}) {
+  const variants = {
+    primary: { bg: C.ink, fg: "white", border: C.ink },
+    secondary: { bg: "white", fg: C.ink, border: C.ink },
+    ghost: { bg: "transparent", fg: C.ink, border: C.ink },
+  };
+  const v = variants[variant];
+  return (
+    <button
+      type={type}
+      onClick={onClick}
+      disabled={disabled}
+      className={`group inline-flex items-center justify-center gap-3 rounded-full px-6 py-4 font-semibold transition-all active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed ${className}`}
+      style={{ backgroundColor: v.bg, color: v.fg, border: `1.5px solid ${v.border}` }}
+    >
+      {Icon && iconPosition === "left" && <Icon size={18} strokeWidth={2.5} />}
+      <span>{children}</span>
+      {Icon && iconPosition === "right" && (
+        <span
+          className="flex h-7 w-7 items-center justify-center rounded-full transition-transform group-hover:translate-x-0.5"
+          style={{
+            backgroundColor: variant === "primary" ? "white" : C.ink,
+            color: variant === "primary" ? C.ink : "white",
+          }}
+        >
+          <Icon size={14} strokeWidth={3} />
+        </span>
+      )}
+    </button>
+  );
+}
+
+function Chip({ children, color = C.mint, selected = false, onClick }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`inline-flex items-center justify-center rounded-full px-5 py-3 text-sm font-semibold transition-all active:scale-[0.97] ${
+        selected ? "ring-2" : ""
+      }`}
+      style={{
+        backgroundColor: color,
+        color: C.ink,
+        boxShadow: selected ? `inset 0 0 0 2px ${C.ink}` : "none",
+      }}
+    >
+      {selected && <Check size={14} strokeWidth={3} className="mr-1.5" />}
+      {children}
+    </button>
+  );
+}
+
+function Field({ label, children, required, error, hint }) {
+  return (
+    <label className="block">
+      <div className="mb-2 flex items-baseline justify-between">
+        <span className="text-sm font-semibold" style={{ color: C.ink }}>
+          {label}
+          {required && <span style={{ color: C.orange }}> *</span>}
+        </span>
+        {hint && <span className="text-xs opacity-60" style={{ color: C.ink }}>{hint}</span>}
+      </div>
+      {children}
+      {error && (
+        <p className="mt-1.5 text-xs font-medium" style={{ color: C.orange }}>
+          {error}
+        </p>
+      )}
+    </label>
+  );
+}
+
+function TextInput({ value, onChange, placeholder, type = "text", ...rest }) {
+  return (
+    <input
+      type={type}
+      value={value || ""}
+      onChange={(e) => onChange(e.target.value)}
+      placeholder={placeholder}
+      className="w-full rounded-2xl border bg-white px-4 py-3.5 text-base font-medium outline-none transition-all focus:border-current"
+      style={{ borderColor: C.hairline, color: C.ink, caretColor: C.ink }}
+      {...rest}
+    />
+  );
+}
+
+function SelectInput({ value, onChange, options, placeholder = "Select…" }) {
+  return (
+    <div className="relative">
+      <select
+        value={value || ""}
+        onChange={(e) => onChange(e.target.value)}
+        className="w-full appearance-none rounded-2xl border bg-white px-4 py-3.5 pr-12 text-base font-medium outline-none transition-all focus:border-current"
+        style={{ borderColor: C.hairline, color: value ? C.ink : "#9aa5a3" }}
+      >
+        <option value="" disabled>
+          {placeholder}
+        </option>
+        {options.map((o) => (
+          <option key={o.value} value={o.value}>
+            {o.label}
+          </option>
+        ))}
+      </select>
+      <ChevronRight
+        size={18}
+        className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 rotate-90"
+        style={{ color: C.ink, opacity: 0.5 }}
+      />
+    </div>
+  );
+}
+
+function ToggleRow({ label, value, onChange, hint }) {
+  return (
+    <div className="flex items-center justify-between rounded-2xl border bg-white p-4" style={{ borderColor: C.hairline }}>
+      <div className="pr-3">
+        <p className="text-sm font-semibold" style={{ color: C.ink }}>
+          {label}
+        </p>
+        {hint && (
+          <p className="mt-0.5 text-xs" style={{ color: C.ink, opacity: 0.6 }}>
+            {hint}
+          </p>
+        )}
+      </div>
+      <button
+        type="button"
+        onClick={() => onChange(!value)}
+        className="relative h-7 w-12 shrink-0 rounded-full transition-colors"
+        style={{ backgroundColor: value ? C.ink : "#d6dedb" }}
+        aria-pressed={value}
+      >
+        <span
+          className="absolute top-0.5 h-6 w-6 rounded-full bg-white shadow transition-transform"
+          style={{ transform: value ? "translateX(22px)" : "translateX(2px)" }}
+        />
+      </button>
+    </div>
+  );
+}
+
+/* --------- LAYOUT --------- */
+function TopBar({ onBack, onMenu, step, totalSteps, transparent = false }) {
+  return (
+    <div className="sticky top-0 z-30" style={{ backgroundColor: transparent ? "transparent" : "rgba(255,255,255,0.9)", backdropFilter: "blur(10px)" }}>
+      <div className="mx-auto flex max-w-md items-center justify-between px-5 py-4">
+        {onBack ? (
+          <button
+            onClick={onBack}
+            className="flex h-10 w-10 items-center justify-center rounded-full"
+            style={{ backgroundColor: "white", border: `1.5px solid ${C.ink}` }}
+            aria-label="Back"
+          >
+            <ArrowLeft size={18} strokeWidth={2.5} style={{ color: C.ink }} />
+          </button>
+        ) : (
+          <Logo className="h-8" />
+        )}
+        {step != null && totalSteps && (
+          <div className="flex items-center gap-1.5">
+            {Array.from({ length: totalSteps }).map((_, i) => (
+              <span
+                key={i}
+                className="h-1.5 rounded-full transition-all"
+                style={{
+                  width: i === step ? 24 : 8,
+                  backgroundColor: i <= step ? C.ink : "rgba(14,44,42,0.2)",
+                }}
+              />
+            ))}
+          </div>
+        )}
+        <button
+          onClick={onMenu}
+          className="flex h-10 w-10 items-center justify-center rounded-full"
+          style={{ backgroundColor: "white", border: `1.5px solid ${C.ink}` }}
+          aria-label="Menu"
+        >
+          <Menu size={18} strokeWidth={2.5} style={{ color: C.ink }} />
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function StickyCTA({ children }) {
+  return (
+    <div
+      className="sticky bottom-0 z-20 mt-8 px-5 pb-6 pt-4"
+      style={{
+        background: "linear-gradient(to top, rgba(255,255,255,1) 60%, rgba(255,255,255,0))",
+      }}
+    >
+      <div className="mx-auto max-w-md">{children}</div>
+    </div>
+  );
+}
+
+/* =========================================================
+   STEP COMPONENTS
+   ========================================================= */
+
+/* --- Landing --- */
+function Landing({ onStart, onMenu }) {
+  return (
+    <div className="min-h-full" style={{ backgroundColor: C.mint }}>
+      <TopBar onMenu={onMenu} transparent />
+      <div className="mx-auto max-w-md px-5 pb-10">
+        <h1
+          className="mt-2 leading-[1.05] tracking-tight"
+          style={{
+            fontFamily: "Fraunces, serif",
+            fontWeight: 900,
+            fontSize: "clamp(40px, 11vw, 56px)",
+            color: C.ink,
+            fontVariationSettings: "'SOFT' 100, 'opsz' 144",
+          }}
+        >
+          Insurance for NZ contractors and the self employed
+        </h1>
+        <p
+          className="mt-6 text-lg leading-relaxed"
+          style={{ color: C.ink, fontWeight: 500 }}
+        >
+          JUSTN keeps insurance seamless. Excellent cover, easy to manage, always in your back pocket when you need it.
+        </p>
+
+        <div className="mt-8">
+          <PillButton onClick={onStart}>Instant Quote</PillButton>
+        </div>
+
+        <div className="mt-7 flex items-center gap-3">
+          <div className="flex -space-x-2">
+            {["#F26B3A", "#C5A8E0", "#C8E866"].map((bg, i) => (
+              <div
+                key={i}
+                className="flex h-10 w-10 items-center justify-center rounded-full ring-2 ring-white"
+                style={{ backgroundColor: bg, color: C.ink, fontWeight: 800 }}
+              >
+                {["AT", "MJ", "RP"][i]}
+              </div>
+            ))}
+          </div>
+          <p className="text-sm" style={{ color: C.ink, fontWeight: 500 }}>
+            Used by IT contractors, government<br />contractors, consultants
+          </p>
+        </div>
+
+        {/* product cards */}
+        <div className="mt-10 space-y-5">
+          {COVERS.map((c) => (
+            <div
+              key={c.id}
+              className="rounded-[28px] p-6"
+              style={{ backgroundColor: c.chip }}
+            >
+              <div
+                className="flex h-32 items-end rounded-2xl p-4"
+                style={{ backgroundColor: C.ink }}
+              >
+                <p
+                  className="text-2xl leading-tight text-white"
+                  style={{ fontFamily: "Fraunces, serif", fontWeight: 800, fontVariationSettings: "'SOFT' 100" }}
+                >
+                  {c.name}
+                </p>
+              </div>
+              <p className="mt-4 text-base font-medium" style={{ color: C.ink }}>
+                {c.tagline}
+              </p>
+            </div>
+          ))}
+        </div>
+
+        {/* why JUSTN */}
+        <div className="mt-12">
+          <h2
+            className="leading-tight tracking-tight"
+            style={{
+              fontFamily: "Fraunces, serif",
+              fontWeight: 900,
+              fontSize: "clamp(32px, 8vw, 42px)",
+              color: C.ink,
+              fontVariationSettings: "'SOFT' 100",
+            }}
+          >
+            Cover you'll actually use, when you need it
+          </h2>
+          <div className="mt-6 space-y-4">
+            {[
+              { icon: Check, title: "Public Liability, Professional Indemnity, and Statutory Liability" },
+              { icon: DollarSign, title: "Comprehensive cover and sharp pricing" },
+              { icon: Sparkles, title: "Clear wording, straight answers, local know how" },
+            ].map((row, i) => {
+              const Icon = row.icon;
+              return (
+                <div key={i} className="rounded-3xl bg-white p-6 shadow-sm">
+                  <div
+                    className="flex h-12 w-12 items-center justify-center rounded-full"
+                    style={{ backgroundColor: C.ink }}
+                  >
+                    <Icon size={20} strokeWidth={2.5} className="text-white" />
+                  </div>
+                  <p
+                    className="mt-4 text-xl leading-snug"
+                    style={{ fontFamily: "Manrope, sans-serif", fontWeight: 700, color: C.ink }}
+                  >
+                    {row.title}
+                  </p>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        <div className="mt-10">
+          <PillButton onClick={onStart} className="w-full">
+            Get my quote
+          </PillButton>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* --- Cover selection --- */
+function CoverSelect({ data, setData, onNext, onBack, onMenu }) {
+  const selected = data.selectedCovers || [];
+  const toggle = (id) => {
+    const next = selected.includes(id) ? selected.filter((x) => x !== id) : [...selected, id];
+    setData({ ...data, selectedCovers: next });
+  };
+  const isBundle = selected.length === 3;
+
+  return (
+    <div className="min-h-full" style={{ backgroundColor: C.cream }}>
+      <TopBar onBack={onBack} onMenu={onMenu} step={0} totalSteps={5} />
+      <div className="mx-auto max-w-md px-5 pb-32">
+        <p className="text-xs font-bold uppercase tracking-widest" style={{ color: C.ink, opacity: 0.55 }}>
+          Step 1 of 5
+        </p>
+        <h2
+          className="mt-2 leading-tight tracking-tight"
+          style={{
+            fontFamily: "Fraunces, serif",
+            fontWeight: 900,
+            fontSize: "clamp(32px, 8vw, 40px)",
+            color: C.ink,
+            fontVariationSettings: "'SOFT' 100",
+          }}
+        >
+          What cover do you need?
+        </h2>
+        <p className="mt-3 text-base" style={{ color: C.ink, opacity: 0.75 }}>
+          Pick one or bundle all three for a 10% discount. You can change this later.
+        </p>
+
+        <div className="mt-6 space-y-4">
+          {COVERS.map((c) => {
+            const isSel = selected.includes(c.id);
+            return (
+              <button
+                key={c.id}
+                onClick={() => toggle(c.id)}
+                className="block w-full rounded-3xl p-5 text-left transition-all active:scale-[0.99]"
+                style={{
+                  backgroundColor: isSel ? c.chip : "white",
+                  border: `2px solid ${isSel ? C.ink : C.hairline}`,
+                }}
+              >
+                <div className="flex items-start justify-between">
+                  <div className="pr-3">
+                    <p
+                      className="text-xl leading-tight"
+                      style={{ fontFamily: "Fraunces, serif", fontWeight: 800, color: C.ink, fontVariationSettings: "'SOFT' 100" }}
+                    >
+                      {c.name}
+                    </p>
+                    <p className="mt-2 text-sm font-medium" style={{ color: C.ink, opacity: 0.8 }}>
+                      {c.tagline}
+                    </p>
+                  </div>
+                  <div
+                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full"
+                    style={{
+                      backgroundColor: isSel ? C.ink : "transparent",
+                      border: `2px solid ${C.ink}`,
+                    }}
+                  >
+                    {isSel && <Check size={18} strokeWidth={3} className="text-white" />}
+                  </div>
+                </div>
+              </button>
+            );
+          })}
+        </div>
+
+        {isBundle && (
+          <div
+            className="mt-5 flex items-center gap-3 rounded-2xl p-4"
+            style={{ backgroundColor: C.lime }}
+          >
+            <Sparkles size={20} style={{ color: C.ink }} />
+            <p className="text-sm font-bold" style={{ color: C.ink }}>
+              Nice — 10% bundle discount applied to your quote.
+            </p>
+          </div>
+        )}
+      </div>
+
+      <StickyCTA>
+        <PillButton onClick={onNext} disabled={selected.length === 0} className="w-full">
+          Continue
+        </PillButton>
+      </StickyCTA>
+    </div>
+  );
+}
+
+/* --- About your business --- */
+function BusinessStep({ data, setData, onNext, onBack, onMenu }) {
+  const update = (k, v) => setData({ ...data, [k]: v });
+  const valid = data.legalName && data.entityType && data.contactName && data.email && data.mobile;
+
+  return (
+    <div className="min-h-full" style={{ backgroundColor: C.cream }}>
+      <TopBar onBack={onBack} onMenu={onMenu} step={1} totalSteps={5} />
+      <div className="mx-auto max-w-md px-5 pb-32">
+        <p className="text-xs font-bold uppercase tracking-widest" style={{ color: C.ink, opacity: 0.55 }}>
+          Step 2 of 5
+        </p>
+        <h2
+          className="mt-2 leading-tight tracking-tight"
+          style={{
+            fontFamily: "Fraunces, serif",
+            fontWeight: 900,
+            fontSize: "clamp(32px, 8vw, 40px)",
+            color: C.ink,
+            fontVariationSettings: "'SOFT' 100",
+          }}
+        >
+          About your business
+        </h2>
+        <p className="mt-3 text-base" style={{ color: C.ink, opacity: 0.75 }}>
+          Just the basics. We use this on your policy documents and tax invoice.
+        </p>
+
+        <div className="mt-7 space-y-5">
+          <Field label="Legal entity name" required>
+            <TextInput value={data.legalName} onChange={(v) => update("legalName", v)} placeholder="e.g. Pacific Code Ltd" />
+          </Field>
+          <Field label="Trading name (if different)">
+            <TextInput value={data.tradingName} onChange={(v) => update("tradingName", v)} placeholder="Optional" />
+          </Field>
+          <Field label="NZBN / company number" hint="Helps us auto-verify">
+            <TextInput value={data.nzbn} onChange={(v) => update("nzbn", v)} placeholder="9429 0000 0000" />
+          </Field>
+          <Field label="Entity type" required>
+            <SelectInput
+              value={data.entityType}
+              onChange={(v) => update("entityType", v)}
+              options={ENTITY_TYPES.map((t) => ({ value: t, label: t }))}
+              placeholder="Choose entity type"
+            />
+          </Field>
+
+          <div className="my-2 h-px" style={{ backgroundColor: C.hairline }} />
+
+          <Field label="Contact person" required>
+            <TextInput value={data.contactName} onChange={(v) => update("contactName", v)} placeholder="Your full name" />
+          </Field>
+          <Field label="Email" required>
+            <TextInput type="email" value={data.email} onChange={(v) => update("email", v)} placeholder="you@example.co.nz" />
+          </Field>
+          <Field label="Mobile" required>
+            <TextInput type="tel" value={data.mobile} onChange={(v) => update("mobile", v)} placeholder="021 …" />
+          </Field>
+        </div>
+      </div>
+
+      <StickyCTA>
+        <PillButton onClick={onNext} disabled={!valid} className="w-full">
+          Continue
+        </PillButton>
+      </StickyCTA>
+    </div>
+  );
+}
+
+/* --- Risk profile --- */
+function RiskStep({ data, setData, onNext, onBack, onMenu }) {
+  const update = (k, v) => setData({ ...data, [k]: v });
+  const valid = data.occupation && data.servicesDescription && data.yearsBand && data.revenueBand && data.employeeBand && data.subcontractors !== undefined && data.overseasWork !== undefined && data.priorClaims !== undefined;
+
+  return (
+    <div className="min-h-full" style={{ backgroundColor: C.cream }}>
+      <TopBar onBack={onBack} onMenu={onMenu} step={2} totalSteps={5} />
+      <div className="mx-auto max-w-md px-5 pb-32">
+        <p className="text-xs font-bold uppercase tracking-widest" style={{ color: C.ink, opacity: 0.55 }}>
+          Step 3 of 5
+        </p>
+        <h2
+          className="mt-2 leading-tight tracking-tight"
+          style={{
+            fontFamily: "Fraunces, serif",
+            fontWeight: 900,
+            fontSize: "clamp(32px, 8vw, 40px)",
+            color: C.ink,
+            fontVariationSettings: "'SOFT' 100",
+          }}
+        >
+          Tell us about your work
+        </h2>
+        <p className="mt-3 text-base" style={{ color: C.ink, opacity: 0.75 }}>
+          This helps us check eligibility and price your cover.
+        </p>
+
+        <div className="mt-7 space-y-5">
+          <Field label="What do you do?" required>
+            <SelectInput
+              value={data.occupation}
+              onChange={(v) => update("occupation", v)}
+              options={OCCUPATIONS.map((o) => ({ value: o.code, label: o.label }))}
+              placeholder="Pick the closest match"
+            />
+          </Field>
+
+          <Field label="Briefly describe your services" required hint="1–2 sentences">
+            <textarea
+              value={data.servicesDescription || ""}
+              onChange={(e) => update("servicesDescription", e.target.value)}
+              placeholder="e.g. I build web apps for NZ government agencies, mostly React + AWS."
+              rows={3}
+              className="w-full rounded-2xl border bg-white px-4 py-3.5 text-base font-medium outline-none focus:border-current"
+              style={{ borderColor: C.hairline, color: C.ink }}
+            />
+          </Field>
+
+          <Field label="Years in business" required>
+            <SelectInput
+              value={data.yearsBand}
+              onChange={(v) => update("yearsBand", v)}
+              options={YEARS_BANDS.map((y) => ({ value: y, label: y }))}
+              placeholder="Select"
+            />
+          </Field>
+
+          <Field label="Annual revenue band" required>
+            <SelectInput
+              value={data.revenueBand}
+              onChange={(v) => update("revenueBand", v)}
+              options={REVENUE_BANDS.map((r) => ({ value: r.id, label: r.label }))}
+              placeholder="Select"
+            />
+          </Field>
+
+          <Field label="Employees" required>
+            <SelectInput
+              value={data.employeeBand}
+              onChange={(v) => update("employeeBand", v)}
+              options={EMPLOYEE_BANDS.map((e) => ({ value: e, label: e }))}
+              placeholder="Select"
+            />
+          </Field>
+
+          <ToggleRow
+            label="Do you use subcontractors?"
+            value={!!data.subcontractors}
+            onChange={(v) => update("subcontractors", v)}
+          />
+          {data.subcontractors && (
+            <ToggleRow
+              label="Written subcontractor agreements in place?"
+              value={!!data.subcontractorAgreements}
+              onChange={(v) => update("subcontractorAgreements", v)}
+              hint="Affects underwriting decision"
+            />
+          )}
+
+          <ToggleRow
+            label="Do you do work overseas?"
+            value={!!data.overseasWork}
+            onChange={(v) => update("overseasWork", v)}
+          />
+          {data.overseasWork && (
+            <Field label="Which jurisdictions?" hint="Tap all that apply">
+              <div className="flex flex-wrap gap-2">
+                {["Australia", "UK", "Asia", "US", "Canada", "Other"].map((j) => {
+                  const sel = (data.overseasJurisdictions || []).includes(j);
+                  return (
+                    <Chip
+                      key={j}
+                      color={sel ? C.lime : "white"}
+                      selected={sel}
+                      onClick={() => {
+                        const cur = data.overseasJurisdictions || [];
+                        const next = sel ? cur.filter((x) => x !== j) : [...cur, j];
+                        update("overseasJurisdictions", next);
+                      }}
+                    >
+                      {j}
+                    </Chip>
+                  );
+                })}
+              </div>
+            </Field>
+          )}
+
+          <ToggleRow
+            label="Any prior claims or known circumstances?"
+            value={!!data.priorClaims}
+            onChange={(v) => update("priorClaims", v)}
+            hint="Includes situations that could lead to a claim"
+          />
+        </div>
+      </div>
+
+      <StickyCTA>
+        <PillButton onClick={onNext} disabled={!valid} className="w-full">
+          Continue
+        </PillButton>
+      </StickyCTA>
+    </div>
+  );
+}
+
+/* --- Limits & excess --- */
+function LimitsStep({ data, setData, onNext, onBack, onMenu }) {
+  const update = (k, v) => setData({ ...data, [k]: v });
+  const limits = data.limits || {};
+  const excesses = data.excesses || {};
+
+  // initialise defaults on first render
+  useEffect(() => {
+    const newLimits = { ...limits };
+    const newExcesses = { ...excesses };
+    let changed = false;
+    (data.selectedCovers || []).forEach((id) => {
+      const c = COVERS.find((x) => x.id === id);
+      if (newLimits[id] == null) { newLimits[id] = c.defaultLimit; changed = true; }
+      if (newExcesses[id] == null) { newExcesses[id] = c.defaultExcess; changed = true; }
+    });
+    if (changed) setData({ ...data, limits: newLimits, excesses: newExcesses });
+    // eslint-disable-next-line
+  }, []);
+
+  return (
+    <div className="min-h-full" style={{ backgroundColor: C.cream }}>
+      <TopBar onBack={onBack} onMenu={onMenu} step={3} totalSteps={5} />
+      <div className="mx-auto max-w-md px-5 pb-32">
+        <p className="text-xs font-bold uppercase tracking-widest" style={{ color: C.ink, opacity: 0.55 }}>
+          Step 4 of 5
+        </p>
+        <h2
+          className="mt-2 leading-tight tracking-tight"
+          style={{
+            fontFamily: "Fraunces, serif",
+            fontWeight: 900,
+            fontSize: "clamp(32px, 8vw, 40px)",
+            color: C.ink,
+            fontVariationSettings: "'SOFT' 100",
+          }}
+        >
+          Set your limits
+        </h2>
+        <p className="mt-3 text-base" style={{ color: C.ink, opacity: 0.75 }}>
+          Government and enterprise contracts often require $1M+. Pick what fits your contracts.
+        </p>
+
+        <div className="mt-7 space-y-6">
+          {(data.selectedCovers || []).map((id) => {
+            const c = COVERS.find((x) => x.id === id);
+            return (
+              <div key={id} className="rounded-3xl p-5" style={{ backgroundColor: c.chip }}>
+                <p
+                  className="text-xl leading-tight"
+                  style={{ fontFamily: "Fraunces, serif", fontWeight: 800, color: C.ink, fontVariationSettings: "'SOFT' 100" }}
+                >
+                  {c.name}
+                </p>
+                <p className="mt-3 text-xs font-bold uppercase tracking-wider" style={{ color: C.ink, opacity: 0.7 }}>
+                  Cover limit
+                </p>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {c.limits.map((lim) => (
+                    <Chip
+                      key={lim}
+                      color={limits[id] === lim ? C.ink : "white"}
+                      onClick={() => update("limits", { ...limits, [id]: lim })}
+                    >
+                      <span style={{ color: limits[id] === lim ? "white" : C.ink }}>{fmtLimit(lim)}</span>
+                    </Chip>
+                  ))}
+                </div>
+                <p className="mt-4 text-xs font-bold uppercase tracking-wider" style={{ color: C.ink, opacity: 0.7 }}>
+                  Excess
+                </p>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {c.excesses.map((ex) => (
+                    <Chip
+                      key={ex}
+                      color={excesses[id] === ex ? C.ink : "white"}
+                      onClick={() => update("excesses", { ...excesses, [id]: ex })}
+                    >
+                      <span style={{ color: excesses[id] === ex ? "white" : C.ink }}>{fmt(ex)}</span>
+                    </Chip>
+                  ))}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      <StickyCTA>
+        <PillButton onClick={onNext} className="w-full">
+          See my quote
+        </PillButton>
+      </StickyCTA>
+    </div>
+  );
+}
+
+/* --- Calculating --- */
+function Calculating({ onComplete }) {
+  useEffect(() => {
+    const t = setTimeout(onComplete, 1700);
+    return () => clearTimeout(t);
+  }, [onComplete]);
+  return (
+    <div className="flex min-h-full flex-col items-center justify-center px-5" style={{ backgroundColor: C.mint }}>
+      <Loader2 size={56} className="animate-spin" style={{ color: C.ink }} />
+      <p
+        className="mt-6 text-2xl"
+        style={{ fontFamily: "Fraunces, serif", fontWeight: 800, color: C.ink, fontVariationSettings: "'SOFT' 100" }}
+      >
+        Pricing your cover…
+      </p>
+      <p className="mt-2 text-sm" style={{ color: C.ink, opacity: 0.7 }}>
+        Checking eligibility, applying rating tables.
+      </p>
+    </div>
+  );
+}
+
+/* --- Quote display --- */
+function QuoteResult({ data, quote, onNext, onBack, onMenu, onSave }) {
+  return (
+    <div className="min-h-full" style={{ backgroundColor: C.cream }}>
+      <TopBar onBack={onBack} onMenu={onMenu} step={4} totalSteps={5} />
+      <div className="mx-auto max-w-md px-5 pb-32">
+        <div
+          className="-mx-5 -mt-2 px-5 pb-8 pt-4"
+          style={{ backgroundColor: C.mint }}
+        >
+          <p className="text-xs font-bold uppercase tracking-widest" style={{ color: C.ink, opacity: 0.65 }}>
+            Your quote
+          </p>
+          <h2
+            className="mt-1 leading-none tracking-tight"
+            style={{
+              fontFamily: "Fraunces, serif",
+              fontWeight: 900,
+              fontSize: "clamp(48px, 14vw, 68px)",
+              color: C.ink,
+              fontVariationSettings: "'SOFT' 100",
+            }}
+          >
+            {fmt(quote.total)}
+          </h2>
+          <p className="mt-2 text-sm font-semibold" style={{ color: C.ink, opacity: 0.8 }}>
+            per year, GST inclusive · 12-month policy
+          </p>
+          <div className="mt-5 inline-flex items-center gap-2 rounded-full bg-white px-4 py-2">
+            <Clock size={14} style={{ color: C.ink }} />
+            <p className="text-xs font-bold" style={{ color: C.ink }}>
+              Quote valid for 30 days
+            </p>
+          </div>
+        </div>
+
+        <div className="mt-6 rounded-3xl bg-white p-5">
+          <p className="text-sm font-bold uppercase tracking-wider" style={{ color: C.ink, opacity: 0.6 }}>
+            What's included
+          </p>
+          <div className="mt-4 space-y-4">
+            {quote.lines.map((l) => (
+              <div key={l.id} className="flex items-start justify-between gap-4 border-b pb-4 last:border-0 last:pb-0" style={{ borderColor: C.hairline }}>
+                <div>
+                  <p className="font-bold" style={{ color: C.ink }}>{l.name}</p>
+                  <p className="mt-1 text-xs" style={{ color: C.ink, opacity: 0.7 }}>
+                    {fmtLimit(l.limit)} limit · {fmt(l.excess)} excess
+                  </p>
+                </div>
+                <p className="font-bold tabular-nums" style={{ color: C.ink }}>{fmt(l.premium)}</p>
+              </div>
+            ))}
+          </div>
+
+          <div className="mt-5 space-y-2 border-t pt-5 text-sm" style={{ borderColor: C.hairline }}>
+            <Row label="Premium subtotal" value={fmt(quote.subtotal)} />
+            {quote.bundleDiscount > 0 && (
+              <Row label="Bundle discount (10%)" value={`-${fmt(quote.bundleDiscount)}`} accent />
+            )}
+            <Row label="Admin fee" value={fmt(quote.adminFee)} />
+            <Row label="Regulatory levy" value={fmt(quote.fapLevy)} />
+            <Row label="GST (15%)" value={fmt(quote.gst)} />
+            <div className="my-2 h-px" style={{ backgroundColor: C.hairline }} />
+            <Row label="Total" value={fmt(quote.total)} bold />
+          </div>
+        </div>
+
+        <div className="mt-5 rounded-3xl p-5" style={{ backgroundColor: C.lime }}>
+          <div className="flex gap-3">
+            <Info size={20} style={{ color: C.ink }} className="shrink-0" />
+            <div>
+              <p className="text-sm font-bold" style={{ color: C.ink }}>
+                Cover starts the moment you bind
+              </p>
+              <p className="mt-1 text-xs" style={{ color: C.ink, opacity: 0.8 }}>
+                You'll get your schedule, certificate of currency, and tax invoice by email immediately.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <button
+          onClick={onSave}
+          className="mt-5 inline-flex items-center gap-2 text-sm font-bold underline underline-offset-4"
+          style={{ color: C.ink }}
+        >
+          <Mail size={16} /> Email this quote to me
+        </button>
+      </div>
+
+      <StickyCTA>
+        <PillButton onClick={onNext} className="w-full">
+          Continue to bind
+        </PillButton>
+      </StickyCTA>
+    </div>
+  );
+}
+
+function Row({ label, value, bold, accent }) {
+  return (
+    <div className="flex items-center justify-between">
+      <span style={{ color: C.ink, opacity: bold ? 1 : 0.75, fontWeight: bold ? 700 : 500 }}>
+        {label}
+      </span>
+      <span
+        className="tabular-nums"
+        style={{ color: accent ? C.orange : C.ink, fontWeight: bold ? 800 : 600, fontSize: bold ? "1.125rem" : undefined }}
+      >
+        {value}
+      </span>
+    </div>
+  );
+}
+
+/* --- Referral --- */
+function Referral({ reasons, data, onBack, onMenu, onHome }) {
+  return (
+    <div className="min-h-full" style={{ backgroundColor: C.cream }}>
+      <TopBar onBack={onBack} onMenu={onMenu} />
+      <div className="mx-auto max-w-md px-5 pb-20">
+        <div className="-mx-5 -mt-2 px-5 pb-8 pt-4" style={{ backgroundColor: C.purple }}>
+          <div className="inline-flex items-center gap-2 rounded-full bg-white px-3 py-1.5">
+            <AlertCircle size={14} style={{ color: C.ink }} />
+            <p className="text-xs font-bold" style={{ color: C.ink }}>Needs a quick review</p>
+          </div>
+          <h2
+            className="mt-4 leading-tight tracking-tight"
+            style={{
+              fontFamily: "Fraunces, serif",
+              fontWeight: 900,
+              fontSize: "clamp(32px, 8vw, 40px)",
+              color: C.ink,
+              fontVariationSettings: "'SOFT' 100",
+            }}
+          >
+            Hi {data.contactName?.split(" ")[0] || "there"}, we'll take it from here.
+          </h2>
+          <p className="mt-3 text-base font-medium" style={{ color: C.ink }}>
+            Your application looks good but needs a human eye. One of our underwriters will review and get back to you within 1 business day.
+          </p>
+        </div>
+
+        <div className="mt-6 rounded-3xl bg-white p-5">
+          <p className="text-sm font-bold uppercase tracking-wider" style={{ color: C.ink, opacity: 0.6 }}>
+            What flagged for review
+          </p>
+          <ul className="mt-4 space-y-3">
+            {reasons.map((r) => (
+              <li key={r.code} className="flex gap-3">
+                <div className="mt-1 h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: C.orange }} />
+                <p className="text-sm" style={{ color: C.ink }}>{r.message}</p>
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        <div className="mt-5 rounded-3xl p-5" style={{ backgroundColor: C.mint }}>
+          <p className="text-sm font-bold" style={{ color: C.ink }}>What happens next</p>
+          <ol className="mt-3 space-y-2 text-sm" style={{ color: C.ink }}>
+            <li>1. We'll email you a confirmation now (reference #JTN-{Math.floor(Math.random() * 90000) + 10000}).</li>
+            <li>2. An underwriter reviews your application.</li>
+            <li>3. We come back with terms — usually within 1 business day.</li>
+          </ol>
+        </div>
+      </div>
+
+      <StickyCTA>
+        <PillButton onClick={onHome} variant="secondary" className="w-full" icon={null}>
+          Back to home
+        </PillButton>
+      </StickyCTA>
+    </div>
+  );
+}
+
+/* --- Decline --- */
+function Decline({ reasons, onBack, onMenu, onHome }) {
+  return (
+    <div className="min-h-full" style={{ backgroundColor: C.cream }}>
+      <TopBar onBack={onBack} onMenu={onMenu} />
+      <div className="mx-auto max-w-md px-5 pb-20">
+        <div className="-mx-5 -mt-2 px-5 pb-8 pt-4" style={{ backgroundColor: C.orange }}>
+          <div className="inline-flex items-center gap-2 rounded-full bg-white px-3 py-1.5">
+            <X size={14} style={{ color: C.ink }} />
+            <p className="text-xs font-bold" style={{ color: C.ink }}>Not the right fit</p>
+          </div>
+          <h2
+            className="mt-4 leading-tight tracking-tight text-white"
+            style={{
+              fontFamily: "Fraunces, serif",
+              fontWeight: 900,
+              fontSize: "clamp(32px, 8vw, 40px)",
+              fontVariationSettings: "'SOFT' 100",
+            }}
+          >
+            Sorry — we can't cover you on this scheme.
+          </h2>
+          <p className="mt-3 text-base font-medium text-white">
+            Our contractor scheme has specific appetite limits. Here's why we can't proceed automatically.
+          </p>
+        </div>
+
+        <div className="mt-6 rounded-3xl bg-white p-5">
+          <ul className="space-y-3">
+            {reasons.map((r) => (
+              <li key={r.code} className="flex gap-3">
+                <div className="mt-1 h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: C.orange }} />
+                <p className="text-sm" style={{ color: C.ink }}>{r.message}</p>
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        <div className="mt-5 rounded-3xl p-5" style={{ backgroundColor: C.lime }}>
+          <p className="text-sm font-bold" style={{ color: C.ink }}>Want us to refer you?</p>
+          <p className="mt-2 text-sm" style={{ color: C.ink }}>
+            We work with broker partners who specialise in this risk class. Email <span className="font-bold underline">hello@justn.co.nz</span> and we'll connect you.
+          </p>
+        </div>
+      </div>
+
+      <StickyCTA>
+        <PillButton onClick={onHome} variant="secondary" className="w-full" icon={null}>
+          Back to home
+        </PillButton>
+      </StickyCTA>
+    </div>
+  );
+}
+
+/* --- Declarations --- */
+function Declarations({ data, setData, onNext, onBack, onMenu }) {
+  const update = (k, v) => setData({ ...data, [k]: v });
+  const all = data.declAccuracy && data.declPrivacy && data.declDisclosure && data.declUMR;
+
+  const Tick = ({ k, label, sub }) => (
+    <button
+      onClick={() => update(k, !data[k])}
+      className="flex w-full items-start gap-3 rounded-2xl border bg-white p-4 text-left transition-all active:scale-[0.99]"
+      style={{ borderColor: data[k] ? C.ink : C.hairline, borderWidth: data[k] ? 2 : 1 }}
+    >
+      <div
+        className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-md"
+        style={{
+          backgroundColor: data[k] ? C.ink : "transparent",
+          border: `1.5px solid ${C.ink}`,
+        }}
+      >
+        {data[k] && <Check size={14} strokeWidth={3} className="text-white" />}
+      </div>
+      <div>
+        <p className="text-sm font-bold" style={{ color: C.ink }}>{label}</p>
+        {sub && <p className="mt-1 text-xs" style={{ color: C.ink, opacity: 0.7 }}>{sub}</p>}
+      </div>
+    </button>
+  );
+
+  return (
+    <div className="min-h-full" style={{ backgroundColor: C.cream }}>
+      <TopBar onBack={onBack} onMenu={onMenu} step={4} totalSteps={5} />
+      <div className="mx-auto max-w-md px-5 pb-32">
+        <p className="text-xs font-bold uppercase tracking-widest" style={{ color: C.ink, opacity: 0.55 }}>
+          Step 5 of 5
+        </p>
+        <h2
+          className="mt-2 leading-tight tracking-tight"
+          style={{
+            fontFamily: "Fraunces, serif",
+            fontWeight: 900,
+            fontSize: "clamp(32px, 8vw, 40px)",
+            color: C.ink,
+            fontVariationSettings: "'SOFT' 100",
+          }}
+        >
+          Almost there. Just a few ticks.
+        </h2>
+        <p className="mt-3 text-base" style={{ color: C.ink, opacity: 0.75 }}>
+          You need to confirm a few things before we can issue cover.
+        </p>
+
+        <div className="mt-6 space-y-3">
+          <Tick k="declAccuracy" label="The information I've provided is true and complete" sub="Insurers rely on what you tell us. Inaccurate info can affect claims." />
+          <Tick k="declPrivacy" label="I accept the JUSTN Privacy Statement" sub="How we collect, use, and store your information." />
+          <Tick k="declDisclosure" label="I've read the Disclosure Statement and product wording" sub="Including the Policy Wording (PDS) and Schedule." />
+          <Tick k="declUMR" label="I authorise JUSTN to arrange this cover with the underwriter" />
+        </div>
+      </div>
+
+      <StickyCTA>
+        <PillButton onClick={onNext} disabled={!all} className="w-full">
+          Continue to payment
+        </PillButton>
+      </StickyCTA>
+    </div>
+  );
+}
+
+/* --- Payment --- */
+function Payment({ data, quote, onNext, onBack, onMenu }) {
+  const [card, setCard] = useState({ number: "4242 4242 4242 4242", exp: "12/28", cvv: "123", name: data.contactName || "" });
+  const [processing, setProcessing] = useState(false);
+  const valid = card.number && card.exp && card.cvv && card.name;
+
+  const submit = () => {
+    setProcessing(true);
+    setTimeout(onNext, 1800);
+  };
+
+  return (
+    <div className="min-h-full" style={{ backgroundColor: C.cream }}>
+      <TopBar onBack={onBack} onMenu={onMenu} />
+      <div className="mx-auto max-w-md px-5 pb-32">
+        <p className="text-xs font-bold uppercase tracking-widest" style={{ color: C.ink, opacity: 0.55 }}>
+          Payment
+        </p>
+        <h2
+          className="mt-2 leading-tight tracking-tight"
+          style={{
+            fontFamily: "Fraunces, serif",
+            fontWeight: 900,
+            fontSize: "clamp(32px, 8vw, 40px)",
+            color: C.ink,
+            fontVariationSettings: "'SOFT' 100",
+          }}
+        >
+          Pay {fmt(quote.total)}
+        </h2>
+        <p className="mt-3 text-base" style={{ color: C.ink, opacity: 0.75 }}>
+          Secured by Stripe. Card details aren't stored on our system.
+        </p>
+
+        <div className="mt-7 space-y-4">
+          <Field label="Card number" required>
+            <TextInput value={card.number} onChange={(v) => setCard({ ...card, number: v })} placeholder="1234 5678 9012 3456" />
+          </Field>
+          <div className="grid grid-cols-2 gap-3">
+            <Field label="Expiry" required>
+              <TextInput value={card.exp} onChange={(v) => setCard({ ...card, exp: v })} placeholder="MM/YY" />
+            </Field>
+            <Field label="CVV" required>
+              <TextInput value={card.cvv} onChange={(v) => setCard({ ...card, cvv: v })} placeholder="123" />
+            </Field>
+          </div>
+          <Field label="Name on card" required>
+            <TextInput value={card.name} onChange={(v) => setCard({ ...card, name: v })} placeholder="As shown on card" />
+          </Field>
+        </div>
+
+        <div
+          className="mt-6 flex items-center gap-2 rounded-2xl p-4"
+          style={{ backgroundColor: "white", border: `1px solid ${C.hairline}` }}
+        >
+          <Lock size={16} style={{ color: C.ink, opacity: 0.7 }} />
+          <p className="text-xs font-medium" style={{ color: C.ink, opacity: 0.8 }}>
+            Demo only · No real card will be charged
+          </p>
+        </div>
+      </div>
+
+      <StickyCTA>
+        <PillButton
+          onClick={submit}
+          disabled={!valid || processing}
+          className="w-full"
+          icon={processing ? Loader2 : ArrowRight}
+        >
+          {processing ? "Processing payment…" : `Pay ${fmt(quote.total)} & bind cover`}
+        </PillButton>
+      </StickyCTA>
+    </div>
+  );
+}
+
+/* --- Confirmation --- */
+function Confirmation({ data, quote, onMenu, onHome }) {
+  const policyNumber = useMemo(
+    () => `JTN-${new Date().getFullYear()}-${String(Math.floor(Math.random() * 900000) + 100000)}`,
+    []
+  );
+  const today = new Date();
+  const expiry = new Date(today);
+  expiry.setFullYear(expiry.getFullYear() + 1);
+
+  return (
+    <div className="min-h-full" style={{ backgroundColor: C.mint }}>
+      <TopBar onMenu={onMenu} transparent />
+      <div className="mx-auto max-w-md px-5 pb-20">
+        <div
+          className="flex h-20 w-20 items-center justify-center rounded-full"
+          style={{ backgroundColor: C.ink }}
+        >
+          <CheckCircle2 size={36} strokeWidth={2.2} className="text-white" />
+        </div>
+        <h2
+          className="mt-6 leading-none tracking-tight"
+          style={{
+            fontFamily: "Fraunces, serif",
+            fontWeight: 900,
+            fontSize: "clamp(40px, 11vw, 56px)",
+            color: C.ink,
+            fontVariationSettings: "'SOFT' 100",
+          }}
+        >
+          You're covered.
+        </h2>
+        <p className="mt-4 text-lg font-medium" style={{ color: C.ink }}>
+          Welcome aboard, {data.contactName?.split(" ")[0] || "there"}. Your policy is active and your documents are on their way to {data.email}.
+        </p>
+
+        <div className="mt-8 rounded-3xl bg-white p-5">
+          <div className="flex items-center justify-between">
+            <p className="text-xs font-bold uppercase tracking-wider" style={{ color: C.ink, opacity: 0.6 }}>
+              Policy number
+            </p>
+            <p className="text-xs font-bold uppercase tracking-wider" style={{ color: C.ink, opacity: 0.6 }}>
+              In force
+            </p>
+          </div>
+          <div className="mt-1 flex items-baseline justify-between">
+            <p className="text-xl font-black tabular-nums" style={{ color: C.ink, fontFamily: "Fraunces, serif" }}>
+              {policyNumber}
+            </p>
+            <div className="flex items-center gap-1.5">
+              <span className="h-2 w-2 rounded-full" style={{ backgroundColor: C.mintDeep }} />
+              <p className="text-sm font-bold" style={{ color: C.ink }}>Active</p>
+            </div>
+          </div>
+          <div className="my-4 h-px" style={{ backgroundColor: C.hairline }} />
+          <Row label="Insured" value={data.legalName} />
+          <Row label="Cover period" value={`${today.toLocaleDateString("en-NZ")} – ${expiry.toLocaleDateString("en-NZ")}`} />
+          <Row label="Total paid" value={fmt(quote.total)} />
+        </div>
+
+        <div className="mt-5 space-y-3">
+          {[
+            { label: "Schedule of insurance", file: "JUSTN_Schedule.pdf" },
+            { label: "Certificate of currency", file: "JUSTN_Certificate.pdf" },
+            { label: "Tax invoice", file: "JUSTN_Invoice.pdf" },
+            { label: "Policy wording", file: "JUSTN_Wording_v3.pdf" },
+          ].map((d) => (
+            <button
+              key={d.file}
+              className="flex w-full items-center justify-between rounded-2xl bg-white p-4 active:scale-[0.99] transition-transform"
+            >
+              <div className="flex items-center gap-3">
+                <div
+                  className="flex h-10 w-10 items-center justify-center rounded-xl"
+                  style={{ backgroundColor: C.lime }}
+                >
+                  <FileText size={18} style={{ color: C.ink }} />
+                </div>
+                <div className="text-left">
+                  <p className="text-sm font-bold" style={{ color: C.ink }}>{d.label}</p>
+                  <p className="text-xs" style={{ color: C.ink, opacity: 0.6 }}>{d.file} · 1 page</p>
+                </div>
+              </div>
+              <Download size={18} style={{ color: C.ink }} />
+            </button>
+          ))}
+        </div>
+
+        <div className="mt-6 rounded-3xl p-5" style={{ backgroundColor: C.ink }}>
+          <p className="text-sm font-bold text-white">Set up your portal</p>
+          <p className="mt-2 text-sm text-white/80">
+            Create a login to manage your policy, add cover, and renew next year in seconds.
+          </p>
+          <button
+            className="mt-4 inline-flex items-center gap-2 rounded-full bg-white px-5 py-2.5 text-sm font-bold"
+            style={{ color: C.ink }}
+          >
+            Activate portal access <ArrowRight size={16} />
+          </button>
+        </div>
+
+        <button
+          onClick={onHome}
+          className="mt-6 inline-flex items-center gap-2 text-sm font-bold underline underline-offset-4"
+          style={{ color: C.ink }}
+        >
+          Done
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/* --- Side menu --- */
+function SideMenu({ open, onClose, onJump, currentStep }) {
+  const items = [
+    { id: "landing", label: "Home" },
+    { id: "covers", label: "Cover selection" },
+    { id: "business", label: "Business details" },
+    { id: "risk", label: "Risk profile" },
+    { id: "limits", label: "Limits & excess" },
+    { id: "quote", label: "Quote" },
+  ];
+  if (!open) return null;
+  return (
+    <div className="fixed inset-0 z-50">
+      <div className="absolute inset-0 bg-black/50" onClick={onClose} />
+      <div
+        className="absolute right-0 top-0 h-full w-80 max-w-[85vw] p-6"
+        style={{ backgroundColor: C.ink }}
+      >
+        <div className="flex items-center justify-between">
+          <Logo className="h-8" />
+          <button onClick={onClose} className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10">
+            <X size={18} className="text-white" />
+          </button>
+        </div>
+        <p className="mt-8 text-xs font-bold uppercase tracking-wider text-white/50">Prototype navigation</p>
+        <div className="mt-3 space-y-1">
+          {items.map((it) => (
+            <button
+              key={it.id}
+              onClick={() => { onJump(it.id); onClose(); }}
+              className="flex w-full items-center justify-between rounded-2xl px-4 py-3 text-left text-white hover:bg-white/10"
+            >
+              <span className="font-semibold">{it.label}</span>
+              {currentStep === it.id && (
+                <span className="h-2 w-2 rounded-full" style={{ backgroundColor: C.mint }} />
+              )}
+            </button>
+          ))}
+        </div>
+        <div className="mt-8 rounded-2xl p-4" style={{ backgroundColor: "rgba(255,255,255,0.08)" }}>
+          <p className="text-xs font-bold uppercase tracking-wider text-white/60">Phase 1 only</p>
+          <p className="mt-1 text-sm text-white/80">
+            Customer login, claims, mid-term changes, and renewals will live here in Phase 2.
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* --- Demo controls --- */
+function DemoControls({ onScenario, onReset, currentStep }) {
+  const [open, setOpen] = useState(false);
+  const scenarios = [
+    { id: "happy", label: "Eligible quote", color: C.mint, desc: "IT contractor, $250k revenue, no claims" },
+    { id: "refer-rev", label: "Referral · high revenue", color: C.purple, desc: "Revenue over $2M" },
+    { id: "refer-occ", label: "Referral · construction PM", color: C.purple, desc: "Out-of-appetite occupation" },
+    { id: "refer-claims", label: "Referral · prior claims", color: C.purple, desc: "Has prior claims" },
+    { id: "refer-us", label: "Referral · US/Canada work", color: C.purple, desc: "Overseas jurisdiction risk" },
+    { id: "decline", label: "Decline · financial adviser", color: C.orange, desc: "Outside scheme appetite" },
+  ];
+
+  return (
+    <>
+      <button
+        onClick={() => setOpen(!open)}
+        className="fixed bottom-5 left-5 z-40 flex h-12 w-12 items-center justify-center rounded-full shadow-lg"
+        style={{ backgroundColor: C.ink, color: "white" }}
+        aria-label="Demo controls"
+      >
+        <Settings size={18} />
+      </button>
+      {open && (
+        <div
+          className="fixed bottom-20 left-5 z-40 w-80 max-w-[calc(100vw-2.5rem)] rounded-3xl p-5 shadow-2xl"
+          style={{ backgroundColor: "white", border: `2px solid ${C.ink}` }}
+        >
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-black" style={{ color: C.ink }}>Demo controls</p>
+              <p className="text-xs" style={{ color: C.ink, opacity: 0.6 }}>Auto-fill a scenario and jump to the quote</p>
+            </div>
+            <button onClick={() => setOpen(false)} className="text-xs font-bold underline" style={{ color: C.ink }}>Close</button>
+          </div>
+          <div className="mt-4 space-y-2">
+            {scenarios.map((s) => (
+              <button
+                key={s.id}
+                onClick={() => { onScenario(s.id); setOpen(false); }}
+                className="flex w-full items-center justify-between rounded-2xl p-3 text-left transition-all hover:scale-[0.99]"
+                style={{ backgroundColor: s.color }}
+              >
+                <div>
+                  <p className="text-sm font-bold" style={{ color: C.ink }}>{s.label}</p>
+                  <p className="text-xs" style={{ color: C.ink, opacity: 0.7 }}>{s.desc}</p>
+                </div>
+                <ChevronRight size={16} style={{ color: C.ink }} />
+              </button>
+            ))}
+          </div>
+          <button
+            onClick={() => { onReset(); setOpen(false); }}
+            className="mt-3 flex w-full items-center justify-center gap-2 rounded-2xl border-2 px-4 py-3 text-sm font-bold"
+            style={{ borderColor: C.ink, color: C.ink }}
+          >
+            <RotateCcw size={14} /> Reset prototype
+          </button>
+          <p className="mt-3 text-[10px] uppercase tracking-wider" style={{ color: C.ink, opacity: 0.5 }}>
+            Currently on: {currentStep}
+          </p>
+        </div>
+      )}
+    </>
+  );
+}
+
+/* --- Toast --- */
+function Toast({ message, onClose }) {
+  useEffect(() => {
+    if (!message) return;
+    const t = setTimeout(onClose, 2500);
+    return () => clearTimeout(t);
+  }, [message, onClose]);
+  if (!message) return null;
+  return (
+    <div className="fixed left-1/2 top-6 z-50 -translate-x-1/2 rounded-full px-5 py-3 shadow-lg" style={{ backgroundColor: C.ink }}>
+      <p className="text-sm font-bold text-white">{message}</p>
+    </div>
+  );
+}
+
+/* =========================================================
+   MAIN APP
+   ========================================================= */
+export default function App() {
+  const [step, setStep] = useState("landing");
+  const [data, setData] = useState({});
+  const [quote, setQuote] = useState(null);
+  const [referralReasons, setReferralReasons] = useState([]);
+  const [declineReasons, setDeclineReasons] = useState([]);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [toast, setToast] = useState("");
+
+  const goCalculate = () => {
+    setStep("calculating");
+  };
+
+  const completeCalculation = () => {
+    const result = evaluate(data);
+    if (result.decision === "decline") {
+      setDeclineReasons(result.reasons);
+      setStep("decline");
+      return;
+    }
+    if (result.decision === "refer") {
+      setReferralReasons(result.reasons);
+      setStep("referral");
+      return;
+    }
+    const q = rate(data);
+    setQuote(q);
+    setStep("quote");
+  };
+
+  const reset = () => {
+    setStep("landing");
+    setData({});
+    setQuote(null);
+    setReferralReasons([]);
+    setDeclineReasons([]);
+  };
+
+  const loadScenario = (id) => {
+    const base = {
+      selectedCovers: ["pi", "pl", "sl"],
+      legalName: "Pacific Code Ltd",
+      tradingName: "Pacific Code",
+      nzbn: "9429046123456",
+      entityType: "Limited company",
+      contactName: "Alex Tane",
+      email: "alex@pacificcode.co.nz",
+      mobile: "021 555 1234",
+      occupation: "IT-DEV",
+      servicesDescription: "Building and maintaining web applications for NZ government and enterprise clients, mainly React + AWS.",
+      yearsBand: "3 – 5 years",
+      revenueBand: "r2",
+      employeeBand: "Just me",
+      subcontractors: false,
+      overseasWork: false,
+      priorClaims: false,
+    };
+
+    const scenarios = {
+      happy: base,
+      "refer-rev": { ...base, revenueBand: "r6" },
+      "refer-occ": { ...base, occupation: "CONST-PM" },
+      "refer-claims": { ...base, priorClaims: true },
+      "refer-us": { ...base, overseasWork: true, overseasJurisdictions: ["US"] },
+      decline: { ...base, occupation: "FIN-ADV" },
+    };
+    setData(scenarios[id]);
+    setStep("calculating");
+  };
+
+  const screen = (() => {
+    switch (step) {
+      case "landing":
+        return <Landing onStart={() => setStep("covers")} onMenu={() => setMenuOpen(true)} />;
+      case "covers":
+        return (
+          <CoverSelect
+            data={data}
+            setData={setData}
+            onNext={() => setStep("business")}
+            onBack={() => setStep("landing")}
+            onMenu={() => setMenuOpen(true)}
+          />
+        );
+      case "business":
+        return (
+          <BusinessStep
+            data={data}
+            setData={setData}
+            onNext={() => setStep("risk")}
+            onBack={() => setStep("covers")}
+            onMenu={() => setMenuOpen(true)}
+          />
+        );
+      case "risk":
+        return (
+          <RiskStep
+            data={data}
+            setData={setData}
+            onNext={() => setStep("limits")}
+            onBack={() => setStep("business")}
+            onMenu={() => setMenuOpen(true)}
+          />
+        );
+      case "limits":
+        return (
+          <LimitsStep
+            data={data}
+            setData={setData}
+            onNext={goCalculate}
+            onBack={() => setStep("risk")}
+            onMenu={() => setMenuOpen(true)}
+          />
+        );
+      case "calculating":
+        return <Calculating onComplete={completeCalculation} />;
+      case "quote":
+        return (
+          <QuoteResult
+            data={data}
+            quote={quote}
+            onNext={() => setStep("declarations")}
+            onBack={() => setStep("limits")}
+            onMenu={() => setMenuOpen(true)}
+            onSave={() => setToast(`Quote emailed to ${data.email}`)}
+          />
+        );
+      case "referral":
+        return (
+          <Referral
+            reasons={referralReasons}
+            data={data}
+            onBack={() => setStep("limits")}
+            onMenu={() => setMenuOpen(true)}
+            onHome={reset}
+          />
+        );
+      case "decline":
+        return (
+          <Decline
+            reasons={declineReasons}
+            onBack={() => setStep("limits")}
+            onMenu={() => setMenuOpen(true)}
+            onHome={reset}
+          />
+        );
+      case "declarations":
+        return (
+          <Declarations
+            data={data}
+            setData={setData}
+            onNext={() => setStep("payment")}
+            onBack={() => setStep("quote")}
+            onMenu={() => setMenuOpen(true)}
+          />
+        );
+      case "payment":
+        return (
+          <Payment
+            data={data}
+            quote={quote}
+            onNext={() => setStep("confirmation")}
+            onBack={() => setStep("declarations")}
+            onMenu={() => setMenuOpen(true)}
+          />
+        );
+      case "confirmation":
+        return (
+          <Confirmation
+            data={data}
+            quote={quote}
+            onMenu={() => setMenuOpen(true)}
+            onHome={reset}
+          />
+        );
+      default:
+        return null;
+    }
+  })();
+
+  return (
+    <div className="min-h-screen" style={{ fontFamily: "Manrope, sans-serif", color: C.ink }}>
+      {/* Google fonts */}
+      <link rel="preconnect" href="https://fonts.googleapis.com" />
+      <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
+      <link
+        href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght,SOFT@9..144,400..900,0..100&family=Manrope:wght@400;500;600;700;800&display=swap"
+        rel="stylesheet"
+      />
+      {screen}
+      <SideMenu
+        open={menuOpen}
+        onClose={() => setMenuOpen(false)}
+        onJump={(id) => {
+          if (id === "quote" && !quote) {
+            setToast("Complete the form first to see a quote");
+            return;
+          }
+          setStep(id);
+        }}
+        currentStep={step}
+      />
+      <DemoControls onScenario={loadScenario} onReset={reset} currentStep={step} />
+      <Toast message={toast} onClose={() => setToast("")} />
+    </div>
+  );
+}
+
+const root = ReactDOM.createRoot(document.getElementById('root'));
+root.render(<App />);
+</script>
+</body>
+</html>

@@ -1,0 +1,2256 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>JUSTN Admin Portal</title>
+<script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+import { useState, useMemo, useEffect } from "react";
+import {
+  LayoutDashboard,
+  FileText,
+  Shield,
+  AlertCircle,
+  Calendar,
+  Settings,
+  Search,
+  Bell,
+  ChevronDown,
+  ChevronRight,
+  ChevronLeft,
+  Filter,
+  Download,
+  Plus,
+  MoreHorizontal,
+  Check,
+  X,
+  Clock,
+  AlertTriangle,
+  ArrowUp,
+  ArrowDown,
+  TrendingUp,
+  User,
+  LogOut,
+  Edit3,
+  Save,
+  MessageSquare,
+  Eye,
+  Activity,
+  Briefcase,
+  RefreshCw,
+  CheckCircle2,
+  XCircle,
+  CircleDot,
+  ArrowRight,
+  Mail,
+  Phone,
+  Building2,
+  MapPin,
+  Hash,
+  Inbox,
+  ListChecks,
+  Sliders,
+  History,
+  Menu,
+  ExternalLink,
+  Sparkles,
+  Info,
+} from "lucide-react";
+
+/* =========================================================
+   JUSTN Admin Portal — Prototype
+   Single-file React artifact
+   ========================================================= */
+
+/* --------- BRAND TOKENS --------- */
+const C = {
+  mint: "#7AE5C0",
+  mintSoft: "#B8F2DA",
+  mintDeep: "#5DD3AA",
+  ink: "#0E2C2A",
+  inkSoft: "#1A3D3A",
+  ink2: "#2A4D48",
+  ink3: "#446660",
+  lime: "#C8E866",
+  orange: "#F26B3A",
+  orangeSoft: "#FFD9C7",
+  purple: "#C5A8E0",
+  purpleSoft: "#E8DBF5",
+  cream: "#FAF7F2",
+  paper: "#FFFFFF",
+  bg: "#F4F1EC",
+  hairline: "rgba(14,44,42,0.10)",
+  hairline2: "rgba(14,44,42,0.06)",
+};
+
+/* --------- SAMPLE DATA --------- */
+
+const TODAY = new Date("2026-04-20T14:30:00+12:00");
+const ago = (mins) => new Date(TODAY.getTime() - mins * 60000);
+const inDays = (d) => new Date(TODAY.getTime() + d * 24 * 60 * 60 * 1000);
+
+const QUOTE_STATUS = {
+  Draft: { color: "#9CA3AF", bg: "#F3F4F6" },
+  Submitted: { color: C.ink, bg: C.mintSoft },
+  Eligible: { color: C.ink, bg: C.mint },
+  Referred: { color: C.ink, bg: C.purple },
+  Offered: { color: C.ink, bg: C.lime },
+  Declined: { color: "white", bg: C.orange },
+  Expired: { color: "white", bg: C.ink3 },
+  Converted: { color: "white", bg: C.ink },
+};
+
+const POLICY_STATUS = {
+  "Pending Bind": { color: C.ink, bg: C.lime },
+  Active: { color: "white", bg: C.mintDeep },
+  Endorsed: { color: C.ink, bg: C.mintSoft },
+  "Pending Cancellation": { color: C.ink, bg: C.orangeSoft },
+  Cancelled: { color: "white", bg: C.orange },
+  Lapsed: { color: "white", bg: C.ink3 },
+  Expired: { color: "white", bg: C.ink3 },
+  Renewed: { color: "white", bg: C.ink },
+};
+
+const RENEWAL_STATUS = {
+  Queued: { color: C.ink, bg: "#E5E7EB" },
+  Drafted: { color: C.ink, bg: C.mintSoft },
+  Offered: { color: C.ink, bg: C.lime },
+  Referred: { color: C.ink, bg: C.purple },
+  Accepted: { color: C.ink, bg: C.mint },
+  Paid: { color: "white", bg: C.mintDeep },
+  Declined: { color: "white", bg: C.orange },
+  Expired: { color: "white", bg: C.ink3 },
+};
+
+const SAMPLE_QUOTES = [
+  { id: "Q-2026-001247", insured: "Pacific Code Ltd", occupation: "Software developer", revenue: "$100k–$250k", covers: ["PI", "PL", "SL"], premium: 1184, status: "Eligible", createdAt: ago(35), email: "alex@pacificcode.co.nz" },
+  { id: "Q-2026-001246", insured: "Bright Spark Consulting", occupation: "Management consultant", revenue: "$250k–$500k", covers: ["PI", "PL"], premium: 1872, status: "Converted", createdAt: ago(180), email: "morgan@brightspark.co.nz" },
+  { id: "Q-2026-001245", insured: "James Mitchell", occupation: "Construction project manager", revenue: "$500k–$1M", covers: ["PI", "PL"], premium: null, status: "Referred", createdAt: ago(260), email: "james.mitchell@gmail.com" },
+  { id: "Q-2026-001244", insured: "Wellington Design Co", occupation: "Graphic / UX designer", revenue: "Under $100k", covers: ["PI", "PL"], premium: 712, status: "Draft", createdAt: ago(440), email: "hello@wellingtondesign.co.nz" },
+  { id: "Q-2026-001243", insured: "Northland Engineering Services", occupation: "Engineering consultant", revenue: "$1M–$2M", covers: ["PI", "PL", "SL"], premium: null, status: "Referred", createdAt: ago(520), email: "owen@nles.co.nz" },
+  { id: "Q-2026-001242", insured: "Aurora Data Ltd", occupation: "Data analyst / scientist", revenue: "$250k–$500k", covers: ["PI"], premium: 1245, status: "Offered", createdAt: ago(640), email: "priya@auroradata.co.nz" },
+  { id: "Q-2026-001241", insured: "Patel Holdings Ltd", occupation: "Financial adviser / broker", revenue: "$500k–$1M", covers: ["PI"], premium: null, status: "Declined", createdAt: ago(710), email: "raj@patelholdings.co.nz" },
+  { id: "Q-2026-001240", insured: "Coastline Marketing", occupation: "Marketing consultant", revenue: "$100k–$250k", covers: ["PI", "PL"], premium: 845, status: "Converted", createdAt: ago(820), email: "sarah@coastline.co.nz" },
+  { id: "Q-2026-001239", insured: "Tane Tahuri", occupation: "Trainer / educator / coach", revenue: "Under $100k", covers: ["PI", "PL", "SL"], premium: 568, status: "Submitted", createdAt: ago(910), email: "tane.tahuri@gmail.com" },
+  { id: "Q-2026-001238", insured: "Edge Cyber Ltd", occupation: "Cybersecurity consultant", revenue: "$250k–$500k", covers: ["PI", "PL", "SL"], premium: 2980, status: "Eligible", createdAt: ago(1100), email: "admin@edgecyber.co.nz" },
+  { id: "Q-2026-001237", insured: "Auckland Tech Ltd", occupation: "Solution architect", revenue: "$500k–$1M", covers: ["PI"], premium: null, status: "Referred", createdAt: ago(1340), email: "founder@auckland.tech" },
+  { id: "Q-2026-001236", insured: "MidSize Corp Limited", occupation: "Management consultant", revenue: "Over $2M", covers: ["PI", "PL", "SL"], premium: null, status: "Referred", createdAt: ago(1560), email: "ops@midsizecorp.co.nz" },
+  { id: "Q-2026-001235", insured: "Quill & Type", occupation: "Copywriter", revenue: "Under $100k", covers: ["PI"], premium: 412, status: "Expired", createdAt: ago(43200), email: "kate@quillandtype.co.nz" },
+];
+
+const SAMPLE_POLICIES = [
+  { id: "POL-2026-000128", insured: "Bright Spark Consulting", covers: ["PI", "PL"], premium: 1872, status: "Active", inception: new Date("2026-04-19"), expiry: new Date("2027-04-19"), nzbn: "9429046789012" },
+  { id: "POL-2026-000127", insured: "Coastline Marketing", covers: ["PI", "PL"], premium: 845, status: "Active", inception: new Date("2026-04-19"), expiry: new Date("2027-04-19"), nzbn: "9429045678901" },
+  { id: "POL-2026-000125", insured: "Hayward & Co", covers: ["PI"], premium: 638, status: "Active", inception: new Date("2026-04-15"), expiry: new Date("2027-04-15"), nzbn: "9429046111222" },
+  { id: "POL-2026-000122", insured: "Studio North", covers: ["PI", "PL", "SL"], premium: 1438, status: "Endorsed", inception: new Date("2026-04-10"), expiry: new Date("2027-04-10"), nzbn: "9429045333222" },
+  { id: "POL-2026-000118", insured: "Aroha Strategy Ltd", covers: ["PI", "PL"], premium: 1120, status: "Active", inception: new Date("2026-04-02"), expiry: new Date("2027-04-02"), nzbn: "9429045111333" },
+  { id: "POL-2025-000098", insured: "Whitfield Build PM", covers: ["PI", "PL", "SL"], premium: 2450, status: "Active", inception: new Date("2025-05-15"), expiry: inDays(25), nzbn: "9429044998877" },
+  { id: "POL-2025-000076", insured: "Riverside Engineers Ltd", covers: ["PI", "PL"], premium: 3210, status: "Active", inception: new Date("2025-06-03"), expiry: inDays(44), nzbn: "9429044112233" },
+  { id: "POL-2025-000054", insured: "Maple HR Consulting", covers: ["PI"], premium: 690, status: "Active", inception: new Date("2025-05-22"), expiry: inDays(32), nzbn: "9429043887766" },
+  { id: "POL-2025-000033", insured: "Vector Analytics Ltd", covers: ["PI", "PL"], premium: 1280, status: "Pending Cancellation", inception: new Date("2025-05-10"), expiry: new Date("2026-05-10"), nzbn: "9429043221100" },
+  { id: "POL-2024-000211", insured: "Old Tech Co Ltd", covers: ["PI", "PL"], premium: 980, status: "Cancelled", inception: new Date("2024-08-12"), expiry: new Date("2025-08-12"), nzbn: "9429042001122" },
+];
+
+const SAMPLE_REFERRALS = [
+  {
+    id: "REF-2026-0089",
+    quoteId: "Q-2026-001236",
+    insured: "MidSize Corp Limited",
+    contactName: "Operations Manager",
+    email: "ops@midsizecorp.co.nz",
+    occupation: "Management consultant",
+    revenue: "Over $2M",
+    employees: "20+",
+    services: "Strategic consulting to NZ corporates and government, including organisational design, transformation, and post-merger integration. Approx 60% public sector clients.",
+    covers: ["PI", "PL", "SL"],
+    estimatedPremium: 4200,
+    waitingMinutes: 1560,
+    flags: [
+      { code: "REV_OVER_2M", message: "Annual revenue over $2M needs manual review for appropriate terms." },
+    ],
+    notes: [
+      { author: "system", at: ago(1560), text: "Quote referred — REV_OVER_2M triggered." },
+    ],
+  },
+  {
+    id: "REF-2026-0088",
+    quoteId: "Q-2026-001245",
+    insured: "James Mitchell",
+    contactName: "James Mitchell",
+    email: "james.mitchell@gmail.com",
+    occupation: "Construction project manager",
+    revenue: "$500k–$1M",
+    employees: "Just me",
+    services: "Sole trader providing construction PM services for residential and small commercial builds across Auckland. Subcontractor coordination, programme management, cost tracking.",
+    covers: ["PI", "PL"],
+    estimatedPremium: 2950,
+    waitingMinutes: 260,
+    flags: [
+      { code: "OCC_REFER", message: "Construction project manager requires manual underwriting review." },
+    ],
+    notes: [
+      { author: "system", at: ago(260), text: "Quote referred — OCC_REFER triggered (Construction PM)." },
+      { author: "Sam (UW)", at: ago(180), text: "Need clarity on portfolio value of projects under management. Asked customer via email." },
+    ],
+  },
+  {
+    id: "REF-2026-0087",
+    quoteId: "Q-2026-001237",
+    insured: "Auckland Tech Ltd",
+    contactName: "Priya Founder",
+    email: "founder@auckland.tech",
+    occupation: "Solution architect",
+    revenue: "$500k–$1M",
+    employees: "1–4",
+    services: "Cloud architecture and migration consulting, primarily AWS. Working with US-based fintech clients on system design.",
+    covers: ["PI"],
+    estimatedPremium: 3420,
+    waitingMinutes: 1340,
+    flags: [
+      { code: "JUR_NORTH_AMERICA", message: "Work in US or Canada requires referral due to elevated jurisdictional risk." },
+    ],
+    notes: [
+      { author: "system", at: ago(1340), text: "Quote referred — JUR_NORTH_AMERICA triggered." },
+    ],
+  },
+  {
+    id: "REF-2026-0086",
+    quoteId: "Q-2026-001243",
+    insured: "Northland Engineering Services",
+    contactName: "Owen Reid",
+    email: "owen@nles.co.nz",
+    occupation: "Engineering consultant",
+    revenue: "$1M–$2M",
+    employees: "5–9",
+    services: "Mechanical and electrical engineering consultancy. Industrial sites, dairy processing facilities. No structural design.",
+    covers: ["PI", "PL", "SL"],
+    estimatedPremium: 6850,
+    waitingMinutes: 520,
+    flags: [
+      { code: "OCC_REFER", message: "Engineering consultant requires manual underwriting review." },
+    ],
+    notes: [
+      { author: "system", at: ago(520), text: "Quote referred — OCC_REFER triggered." },
+    ],
+  },
+  {
+    id: "REF-2026-0085",
+    quoteId: "Q-2026-001234",
+    insured: "Harbour Health Group",
+    contactName: "Dr. Lin Chen",
+    email: "lin@harbourhealth.co.nz",
+    occupation: "Management consultant",
+    revenue: "$250k–$500k",
+    employees: "1–4",
+    services: "Healthcare strategy and operations consulting for DHBs and private clinics.",
+    covers: ["PI", "PL"],
+    estimatedPremium: 1850,
+    waitingMinutes: 2880,
+    flags: [
+      { code: "PRIOR_CLAIMS", message: "Prior claims or known circumstances require underwriter review." },
+    ],
+    notes: [
+      { author: "system", at: ago(2880), text: "Quote referred — PRIOR_CLAIMS triggered." },
+      { author: "Jordan (UW)", at: ago(2400), text: "Asked for claim details — minor PI claim from 2022, settled $4k. Awaiting confirmation no further matters." },
+      { author: "Customer", at: ago(180), text: "Confirmed via email: only the one prior matter, fully settled, no related circumstances." },
+    ],
+  },
+  {
+    id: "REF-2026-0084",
+    quoteId: "Q-2026-001230",
+    insured: "Subcon Specialists Ltd",
+    contactName: "Mark Davies",
+    email: "mark@subconspec.co.nz",
+    occupation: "IT project manager",
+    revenue: "$250k–$500k",
+    employees: "5–9",
+    services: "IT delivery management with a network of subcontractor developers. No formal contracts in place yet — building them now.",
+    covers: ["PI", "PL"],
+    estimatedPremium: 2100,
+    waitingMinutes: 4320,
+    flags: [
+      { code: "SUBBIES_NO_AGREEMENT", message: "Subcontractor use without written agreements requires review." },
+    ],
+    notes: [
+      { author: "system", at: ago(4320), text: "Quote referred — SUBBIES_NO_AGREEMENT triggered." },
+    ],
+  },
+];
+
+const SAMPLE_RENEWALS = [
+  { id: "REN-2026-0042", policyId: "POL-2025-000098", insured: "Whitfield Build PM", expiry: inDays(25), priorPremium: 2450, newPremium: 2585, status: "Drafted", autoRenewable: false, notes: "Construction PM — needs UW review" },
+  { id: "REN-2026-0041", policyId: "POL-2025-000076", insured: "Riverside Engineers Ltd", expiry: inDays(44), priorPremium: 3210, newPremium: 3625, status: "Referred", autoRenewable: false, notes: "Revenue band increased to $1M–$2M" },
+  { id: "REN-2026-0040", policyId: "POL-2025-000054", insured: "Maple HR Consulting", expiry: inDays(32), priorPremium: 690, newPremium: 720, status: "Offered", autoRenewable: true, notes: "Auto-offer sent" },
+  { id: "REN-2026-0039", policyId: "POL-2025-000045", insured: "Bayfield Studio", expiry: inDays(18), priorPremium: 540, newPremium: 558, status: "Paid", autoRenewable: true, notes: "Renewed for 2026/27" },
+  { id: "REN-2026-0038", policyId: "POL-2025-000041", insured: "Greenline Analytics", expiry: inDays(15), priorPremium: 980, newPremium: 1015, status: "Offered", autoRenewable: true, notes: "Auto-offer sent — awaiting customer" },
+  { id: "REN-2026-0037", policyId: "POL-2025-000039", insured: "Tahi Strategy", expiry: inDays(12), priorPremium: 1240, newPremium: 1284, status: "Queued", autoRenewable: true, notes: "Scheduled for offer generation" },
+];
+
+const SAMPLE_OCCUPATIONS = [
+  { code: "IT-DEV", label: "Software developer / engineer", tier: "B", mult: 1.05, status: "Active" },
+  { code: "IT-PM", label: "IT project manager", tier: "B", mult: 1.1, status: "Active" },
+  { code: "IT-BA", label: "Business analyst", tier: "B", mult: 1.0, status: "Active" },
+  { code: "IT-SA", label: "Solution / enterprise architect", tier: "C", mult: 1.35, status: "Active" },
+  { code: "IT-SEC", label: "Cybersecurity consultant", tier: "C", mult: 1.45, status: "Active" },
+  { code: "IT-DATA", label: "Data analyst / scientist", tier: "B", mult: 1.05, status: "Active" },
+  { code: "MGT-CON", label: "Management consultant", tier: "B", mult: 1.15, status: "Active" },
+  { code: "MKT-CON", label: "Marketing consultant", tier: "A", mult: 0.95, status: "Active" },
+  { code: "HR-CON", label: "HR consultant", tier: "B", mult: 1.1, status: "Active" },
+  { code: "DESIGN", label: "Graphic / UX designer", tier: "A", mult: 0.9, status: "Active" },
+  { code: "COPY", label: "Copywriter / content writer", tier: "A", mult: 0.85, status: "Active" },
+  { code: "TRAIN", label: "Trainer / educator / coach", tier: "A", mult: 0.95, status: "Active" },
+  { code: "ACC", label: "Bookkeeper / accountant", tier: "B", mult: 1.2, status: "Active" },
+  { code: "GOV-CON", label: "Government contractor (general)", tier: "B", mult: 1.1, status: "Active" },
+  { code: "ENG-CON", label: "Engineering consultant", tier: "C", mult: 1.6, status: "Refer" },
+  { code: "CONST-PM", label: "Construction project manager", tier: "R", mult: null, status: "Refer" },
+  { code: "FIN-ADV", label: "Financial adviser / broker", tier: "D", mult: null, status: "Decline" },
+  { code: "LAWYER", label: "Lawyer / legal practitioner", tier: "D", mult: null, status: "Decline" },
+];
+
+const SAMPLE_AUDIT = [
+  { at: ago(8), actor: "sam@justn.co.nz", action: "Approved referral REF-2026-0085 with terms (Harbour Health Group)" },
+  { at: ago(22), actor: "system", action: "Quote Q-2026-001246 converted to POL-2026-000128 (Bright Spark Consulting)" },
+  { at: ago(35), actor: "system", action: "New eligible quote Q-2026-001247 created (Pacific Code Ltd)" },
+  { at: ago(48), actor: "jordan@justn.co.nz", action: "Added note to referral REF-2026-0085" },
+  { at: ago(75), actor: "system", action: "Renewal offer sent for POL-2025-000054 (Maple HR Consulting)" },
+  { at: ago(120), actor: "sam@justn.co.nz", action: "Updated rating multiplier for IT-SEC from 1.40 to 1.45" },
+  { at: ago(180), actor: "morgan@brightspark.co.nz", action: "Bound new policy POL-2026-000128" },
+  { at: ago(195), actor: "system", action: "Payment succeeded for Q-2026-001246 ($1,872 NZD)" },
+  { at: ago(260), actor: "system", action: "Quote Q-2026-001245 referred — OCC_REFER (Construction PM)" },
+  { at: ago(320), actor: "alex@justn.co.nz", action: "Logged in from Wellington, NZ" },
+  { at: ago(440), actor: "hello@wellingtondesign.co.nz", action: "Started quote Q-2026-001244 (saved as draft)" },
+  { at: ago(520), actor: "system", action: "Quote Q-2026-001243 referred — OCC_REFER (Engineering consultant)" },
+  { at: ago(640), actor: "system", action: "Quote Q-2026-001242 priced and offered ($1,245)" },
+  { at: ago(710), actor: "system", action: "Quote Q-2026-001241 declined — OCC_OUT_OF_APPETITE (Financial adviser)" },
+  { at: ago(820), actor: "sarah@coastline.co.nz", action: "Bound new policy POL-2026-000127" },
+  { at: ago(1340), actor: "system", action: "Quote Q-2026-001237 referred — JUR_NORTH_AMERICA (US clients)" },
+  { at: ago(1500), actor: "sam@justn.co.nz", action: "Published occupation catalogue v3.2 (added: 'Data scientist / engineer')" },
+];
+
+/* --------- HELPERS --------- */
+const fmt = (n) => n == null ? "—" : n.toLocaleString("en-NZ", { style: "currency", currency: "NZD", maximumFractionDigits: 0 });
+const fmtDate = (d) => d.toLocaleDateString("en-NZ", { day: "2-digit", month: "short", year: "numeric" });
+const fmtDateTime = (d) => d.toLocaleString("en-NZ", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" });
+const relTime = (d) => {
+  const mins = Math.floor((TODAY.getTime() - d.getTime()) / 60000);
+  if (mins < 1) return "just now";
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  const days = Math.floor(hrs / 24);
+  if (days < 30) return `${days}d ago`;
+  const months = Math.floor(days / 30);
+  return `${months}mo ago`;
+};
+const waitTime = (mins) => {
+  if (mins < 60) return `${mins}m`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h`;
+  const days = Math.floor(hrs / 24);
+  return `${days}d ${hrs % 24}h`;
+};
+
+/* --------- LOGO --------- */
+function Logo({ className = "h-8", inverted = true }) {
+  const fill = inverted ? "white" : C.ink;
+  const stroke = inverted ? "white" : C.ink;
+  const text = inverted ? C.ink : "white";
+  return (
+    <div className={`inline-flex items-center ${className}`}>
+      <svg viewBox="0 0 110 50" className="h-full w-auto">
+        <rect x="42" y="2" width="22" height="6" rx="2" fill="none" stroke={stroke} strokeWidth="3" />
+        <path d="M6 10 H100 Q104 10 104 14 V36 Q104 40 100 40 H88 L82 48 L80 40 H10 Q6 40 6 36 Z" fill={fill} />
+        <text
+          x="55"
+          y="32"
+          textAnchor="middle"
+          fontFamily="Fraunces, serif"
+          fontWeight="900"
+          fontSize="20"
+          fill={text}
+          letterSpacing="1"
+        >
+          JUSTN
+        </text>
+      </svg>
+    </div>
+  );
+}
+
+/* --------- SHARED PRIMITIVES --------- */
+function StatusPill({ label, scheme = QUOTE_STATUS, size = "md" }) {
+  const conf = scheme[label] || { color: C.ink, bg: "#E5E7EB" };
+  const sz = size === "sm" ? "text-[11px] px-2 py-0.5" : "text-xs px-2.5 py-1";
+  return (
+    <span
+      className={`inline-flex items-center gap-1.5 rounded-full font-bold uppercase tracking-wider ${sz}`}
+      style={{ backgroundColor: conf.bg, color: conf.color }}
+    >
+      {label}
+    </span>
+  );
+}
+
+function Button({ children, onClick, variant = "primary", icon: Icon, size = "md", className = "", disabled = false, type = "button" }) {
+  const variants = {
+    primary: { bg: C.ink, fg: "white", border: C.ink },
+    secondary: { bg: "white", fg: C.ink, border: C.hairline },
+    ghost: { bg: "transparent", fg: C.ink, border: "transparent" },
+    danger: { bg: C.orange, fg: "white", border: C.orange },
+    success: { bg: C.mintDeep, fg: "white", border: C.mintDeep },
+  };
+  const v = variants[variant];
+  const sizes = {
+    sm: "px-3 py-1.5 text-xs",
+    md: "px-4 py-2.5 text-sm",
+    lg: "px-5 py-3 text-base",
+  };
+  return (
+    <button
+      type={type}
+      onClick={onClick}
+      disabled={disabled}
+      className={`inline-flex items-center justify-center gap-2 rounded-full font-semibold transition-all active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed ${sizes[size]} ${className}`}
+      style={{ backgroundColor: v.bg, color: v.fg, border: `1px solid ${v.border}` }}
+    >
+      {Icon && <Icon size={size === "sm" ? 14 : 16} strokeWidth={2.5} />}
+      {children}
+    </button>
+  );
+}
+
+function IconButton({ icon: Icon, onClick, label, className = "" }) {
+  return (
+    <button
+      onClick={onClick}
+      aria-label={label}
+      className={`flex h-9 w-9 items-center justify-center rounded-full transition-all hover:bg-black/5 ${className}`}
+      style={{ color: C.ink }}
+    >
+      <Icon size={16} strokeWidth={2.5} />
+    </button>
+  );
+}
+
+function Card({ children, className = "", padding = "p-6" }) {
+  return (
+    <div
+      className={`rounded-2xl bg-white ${padding} ${className}`}
+      style={{ border: `1px solid ${C.hairline2}` }}
+    >
+      {children}
+    </div>
+  );
+}
+
+function H1({ children }) {
+  return (
+    <h1
+      className="leading-tight tracking-tight"
+      style={{
+        fontFamily: "Fraunces, serif",
+        fontWeight: 900,
+        fontSize: "clamp(28px, 4vw, 36px)",
+        color: C.ink,
+        fontVariationSettings: "'SOFT' 100",
+      }}
+    >
+      {children}
+    </h1>
+  );
+}
+
+function H2({ children, className = "" }) {
+  return (
+    <h2
+      className={`leading-tight tracking-tight ${className}`}
+      style={{
+        fontFamily: "Fraunces, serif",
+        fontWeight: 800,
+        fontSize: "clamp(20px, 2.4vw, 24px)",
+        color: C.ink,
+        fontVariationSettings: "'SOFT' 100",
+      }}
+    >
+      {children}
+    </h2>
+  );
+}
+
+function Eyebrow({ children }) {
+  return (
+    <p className="text-[11px] font-bold uppercase tracking-[0.12em]" style={{ color: C.ink, opacity: 0.55 }}>
+      {children}
+    </p>
+  );
+}
+
+function SearchField({ value, onChange, placeholder = "Search…", className = "" }) {
+  return (
+    <div className={`relative ${className}`}>
+      <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2" style={{ color: C.ink, opacity: 0.5 }} />
+      <input
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        className="w-full rounded-full bg-white px-10 py-2.5 text-sm font-medium outline-none focus:ring-2"
+        style={{ border: `1px solid ${C.hairline}`, color: C.ink }}
+      />
+      {value && (
+        <button
+          onClick={() => onChange("")}
+          className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full p-0.5 hover:bg-black/10"
+        >
+          <X size={14} style={{ color: C.ink, opacity: 0.6 }} />
+        </button>
+      )}
+    </div>
+  );
+}
+
+/* --------- SIDEBAR --------- */
+function Sidebar({ active, onNavigate, badges, mobileOpen, onCloseMobile }) {
+  const nav = [
+    { id: "dashboard", icon: LayoutDashboard, label: "Dashboard" },
+    { id: "quotes", icon: FileText, label: "Quotes", badge: badges.quotes },
+    { id: "policies", icon: Shield, label: "Policies", badge: badges.policies },
+    { id: "referrals", icon: Inbox, label: "Referrals", badge: badges.referrals, badgeColor: C.purple },
+    { id: "renewals", icon: RefreshCw, label: "Renewals", badge: badges.renewals, badgeColor: C.lime },
+    { id: "config", icon: Sliders, label: "Configuration" },
+    { id: "audit", icon: History, label: "Audit log" },
+  ];
+  return (
+    <>
+      {/* Mobile overlay */}
+      {mobileOpen && (
+        <div className="fixed inset-0 z-40 bg-black/40 lg:hidden" onClick={onCloseMobile} />
+      )}
+      <aside
+        className={`fixed left-0 top-0 z-40 flex h-screen w-64 flex-col p-5 transition-transform lg:translate-x-0 ${mobileOpen ? "translate-x-0" : "-translate-x-full"}`}
+        style={{ backgroundColor: C.ink }}
+      >
+        <div className="flex items-center justify-between">
+          <Logo className="h-8" inverted />
+          <IconButton icon={X} onClick={onCloseMobile} className="lg:hidden text-white" />
+        </div>
+        <p className="mt-1 text-[10px] font-bold uppercase tracking-widest text-white/40">
+          Operations Console
+        </p>
+
+        <nav className="mt-8 flex-1 space-y-0.5">
+          {nav.map((item) => {
+            const Icon = item.icon;
+            const isActive = active === item.id;
+            return (
+              <button
+                key={item.id}
+                onClick={() => { onNavigate(item.id); onCloseMobile(); }}
+                className={`flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-left text-sm font-semibold transition-all ${
+                  isActive ? "" : "hover:bg-white/5"
+                }`}
+                style={{
+                  backgroundColor: isActive ? C.mint : "transparent",
+                  color: isActive ? C.ink : "rgba(255,255,255,0.85)",
+                }}
+              >
+                <span className="flex items-center gap-3">
+                  <Icon size={17} strokeWidth={2.3} />
+                  {item.label}
+                </span>
+                {item.badge != null && item.badge > 0 && (
+                  <span
+                    className="rounded-full px-2 py-0.5 text-[10px] font-black"
+                    style={{
+                      backgroundColor: isActive ? C.ink : (item.badgeColor || "rgba(255,255,255,0.15)"),
+                      color: isActive ? "white" : (item.badgeColor ? C.ink : "white"),
+                    }}
+                  >
+                    {item.badge}
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </nav>
+
+        {/* Tip card */}
+        <div className="mb-4 rounded-2xl p-4" style={{ backgroundColor: "rgba(255,255,255,0.06)" }}>
+          <div className="flex items-center gap-2">
+            <Sparkles size={14} className="text-white" />
+            <p className="text-[10px] font-black uppercase tracking-wider text-white">Prototype</p>
+          </div>
+          <p className="mt-1.5 text-xs leading-snug text-white/70">
+            Sample data only. All actions are simulated.
+          </p>
+        </div>
+
+        {/* User */}
+        <div className="flex items-center gap-3 rounded-2xl p-3" style={{ backgroundColor: "rgba(255,255,255,0.05)" }}>
+          <div
+            className="flex h-9 w-9 items-center justify-center rounded-full font-black"
+            style={{ backgroundColor: C.lime, color: C.ink }}
+          >
+            SK
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-xs font-bold text-white">Sam Kahu</p>
+            <p className="truncate text-[10px] text-white/60">sam@justn.co.nz · Admin</p>
+          </div>
+          <IconButton icon={LogOut} className="text-white/70" label="Log out" />
+        </div>
+      </aside>
+    </>
+  );
+}
+
+/* --------- TOP BAR --------- */
+function TopBar({ onMobileMenu, search, setSearch, title }) {
+  const [showNotifs, setShowNotifs] = useState(false);
+  return (
+    <header
+      className="sticky top-0 z-30 flex items-center justify-between gap-4 border-b px-5 py-3 backdrop-blur"
+      style={{ backgroundColor: "rgba(244,241,236,0.85)", borderColor: C.hairline2 }}
+    >
+      <div className="flex items-center gap-3">
+        <IconButton icon={Menu} onClick={onMobileMenu} className="lg:hidden" label="Open menu" />
+        <p className="hidden text-sm font-bold lg:block" style={{ color: C.ink, opacity: 0.55 }}>
+          {title}
+        </p>
+      </div>
+      <div className="flex flex-1 items-center justify-end gap-3">
+        <SearchField value={search} onChange={setSearch} placeholder="Quote #, policy #, name, email…" className="max-w-md" />
+        <div className="relative">
+          <button
+            onClick={() => setShowNotifs(!showNotifs)}
+            className="relative flex h-10 w-10 items-center justify-center rounded-full bg-white"
+            style={{ border: `1px solid ${C.hairline}` }}
+          >
+            <Bell size={16} style={{ color: C.ink }} />
+            <span
+              className="absolute right-2 top-2 h-2 w-2 rounded-full ring-2 ring-white"
+              style={{ backgroundColor: C.orange }}
+            />
+          </button>
+          {showNotifs && (
+            <div
+              className="absolute right-0 top-12 w-80 rounded-2xl bg-white p-2 shadow-xl"
+              style={{ border: `1px solid ${C.hairline}` }}
+            >
+              <div className="px-3 py-2">
+                <p className="text-xs font-black uppercase tracking-wider" style={{ color: C.ink, opacity: 0.6 }}>
+                  Notifications
+                </p>
+              </div>
+              {[
+                { icon: AlertCircle, color: C.orange, text: "Referral REF-2026-0086 waiting > 8 hours" },
+                { icon: Inbox, color: C.purple, text: "2 new referrals in queue" },
+                { icon: RefreshCw, color: C.lime, text: "6 renewals due in next 30 days" },
+              ].map((n, i) => {
+                const Icon = n.icon;
+                return (
+                  <div key={i} className="flex items-start gap-3 rounded-xl p-3 hover:bg-black/5">
+                    <div
+                      className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full"
+                      style={{ backgroundColor: n.color }}
+                    >
+                      <Icon size={14} style={{ color: C.ink }} />
+                    </div>
+                    <p className="text-xs" style={{ color: C.ink }}>{n.text}</p>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </div>
+    </header>
+  );
+}
+
+/* =========================================================
+   PAGE: DASHBOARD
+   ========================================================= */
+function Dashboard({ onNavigate, onOpenReferral }) {
+  const referralsWaiting = SAMPLE_REFERRALS.length;
+  const renewalsDue = SAMPLE_RENEWALS.filter((r) => r.expiry < inDays(60) && r.status !== "Paid").length;
+  const quotesToday = SAMPLE_QUOTES.filter((q) => relTime(q.createdAt).includes("h") || relTime(q.createdAt).includes("m")).length;
+  const bindRate = 0.62;
+  const gwpThisMonth = 47820;
+
+  // Mini bar chart data for last 7 days
+  const chartData = [12, 18, 14, 22, 19, 27, 24];
+  const maxBar = Math.max(...chartData);
+
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <Eyebrow>Monday, 20 April 2026</Eyebrow>
+          <H1>Morena, Sam 👋</H1>
+          <p className="mt-2 text-sm" style={{ color: C.ink, opacity: 0.7 }}>
+            You've got <span className="font-bold" style={{ color: C.ink, opacity: 1 }}>{referralsWaiting} referrals</span> waiting and <span className="font-bold" style={{ color: C.ink, opacity: 1 }}>{renewalsDue} renewals</span> due in the next 60 days.
+          </p>
+        </div>
+        <div className="flex gap-2">
+          <Button variant="secondary" icon={Download} size="sm">Export</Button>
+          <Button icon={ArrowRight} size="sm" onClick={() => onNavigate("referrals")}>Open referrals queue</Button>
+        </div>
+      </div>
+
+      {/* KPI cards */}
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+        <StatCard
+          eyebrow="Quotes today"
+          value={quotesToday}
+          delta="+18%"
+          deltaPositive
+          context="vs. yesterday"
+          accent={C.mint}
+        />
+        <StatCard
+          eyebrow="Bind rate (30d)"
+          value={`${Math.round(bindRate * 100)}%`}
+          delta="+4 pts"
+          deltaPositive
+          context="vs. last 30d"
+          accent={C.lime}
+        />
+        <StatCard
+          eyebrow="Referrals waiting"
+          value={referralsWaiting}
+          delta="2 over 24h"
+          deltaPositive={false}
+          context="oldest 3 days"
+          accent={C.purple}
+          onClick={() => onNavigate("referrals")}
+        />
+        <StatCard
+          eyebrow="GWP this month"
+          value={fmt(gwpThisMonth)}
+          delta="+12%"
+          deltaPositive
+          context="vs. April 2025"
+          accent={C.orangeSoft}
+        />
+      </div>
+
+      <div className="grid gap-6 lg:grid-cols-3">
+        {/* Quote volume chart */}
+        <Card className="lg:col-span-2">
+          <div className="flex items-start justify-between">
+            <div>
+              <Eyebrow>Last 7 days</Eyebrow>
+              <H2 className="mt-1">Quote volume</H2>
+            </div>
+            <Button variant="ghost" size="sm" icon={ExternalLink}>
+              Full report
+            </Button>
+          </div>
+          <div className="mt-6 flex h-48 items-end gap-3">
+            {chartData.map((v, i) => {
+              const days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+              const isToday = i === chartData.length - 1;
+              return (
+                <div key={i} className="flex flex-1 flex-col items-center gap-2">
+                  <div className="flex w-full items-end" style={{ height: "100%" }}>
+                    <div
+                      className="w-full rounded-t-lg transition-all"
+                      style={{
+                        height: `${(v / maxBar) * 100}%`,
+                        backgroundColor: isToday ? C.ink : C.mint,
+                      }}
+                      title={`${v} quotes`}
+                    />
+                  </div>
+                  <p className="text-[10px] font-bold uppercase" style={{ color: C.ink, opacity: isToday ? 1 : 0.5 }}>
+                    {days[i]}
+                  </p>
+                </div>
+              );
+            })}
+          </div>
+          <div className="mt-4 flex items-center justify-between border-t pt-4" style={{ borderColor: C.hairline2 }}>
+            <div>
+              <p className="text-2xl font-black tabular-nums" style={{ color: C.ink, fontFamily: "Fraunces, serif" }}>
+                136
+              </p>
+              <p className="text-xs font-medium" style={{ color: C.ink, opacity: 0.6 }}>
+                Quotes started this week
+              </p>
+            </div>
+            <div>
+              <p className="text-2xl font-black tabular-nums" style={{ color: C.ink, fontFamily: "Fraunces, serif" }}>
+                84
+              </p>
+              <p className="text-xs font-medium" style={{ color: C.ink, opacity: 0.6 }}>
+                Eligible for instant pricing
+              </p>
+            </div>
+            <div>
+              <p className="text-2xl font-black tabular-nums" style={{ color: C.ink, fontFamily: "Fraunces, serif" }}>
+                52
+              </p>
+              <p className="text-xs font-medium" style={{ color: C.ink, opacity: 0.6 }}>
+                Bound and paid
+              </p>
+            </div>
+          </div>
+        </Card>
+
+        {/* Alerts */}
+        <Card>
+          <Eyebrow>Needs attention</Eyebrow>
+          <H2 className="mt-1">Alerts</H2>
+          <div className="mt-4 space-y-3">
+            <AlertRow
+              icon={AlertTriangle}
+              color={C.orange}
+              title="Oldest referral waiting 3 days"
+              sub="Subcon Specialists Ltd — REF-2026-0084"
+              onClick={() => onOpenReferral("REF-2026-0084")}
+            />
+            <AlertRow
+              icon={Inbox}
+              color={C.purple}
+              title={`${referralsWaiting} referrals in queue`}
+              sub="2 over 24h SLA"
+              onClick={() => onNavigate("referrals")}
+            />
+            <AlertRow
+              icon={RefreshCw}
+              color={C.lime}
+              title="2 renewals need underwriter review"
+              sub="Construction PM and engineering"
+              onClick={() => onNavigate("renewals")}
+            />
+            <AlertRow
+              icon={Info}
+              color={C.mintSoft}
+              title="No document failures"
+              sub="All schedules issued cleanly"
+            />
+          </div>
+        </Card>
+      </div>
+
+      {/* Recent referrals & activity */}
+      <div className="grid gap-6 lg:grid-cols-3">
+        <Card className="lg:col-span-2">
+          <div className="flex items-center justify-between">
+            <div>
+              <Eyebrow>Referrals queue</Eyebrow>
+              <H2 className="mt-1">Latest waiting</H2>
+            </div>
+            <Button variant="secondary" size="sm" onClick={() => onNavigate("referrals")} icon={ArrowRight}>
+              View all
+            </Button>
+          </div>
+          <div className="mt-4 -mx-2">
+            {SAMPLE_REFERRALS.slice(0, 4).map((r) => (
+              <button
+                key={r.id}
+                onClick={() => onOpenReferral(r.id)}
+                className="flex w-full items-center gap-4 rounded-xl px-2 py-3 text-left transition-colors hover:bg-black/5"
+              >
+                <div
+                  className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full"
+                  style={{ backgroundColor: C.purpleSoft }}
+                >
+                  <AlertCircle size={16} style={{ color: C.ink }} />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2">
+                    <p className="truncate text-sm font-bold" style={{ color: C.ink }}>
+                      {r.insured}
+                    </p>
+                    <span className="text-xs" style={{ color: C.ink, opacity: 0.5 }}>·</span>
+                    <p className="truncate text-xs" style={{ color: C.ink, opacity: 0.65 }}>
+                      {r.occupation}
+                    </p>
+                  </div>
+                  <p className="mt-0.5 truncate text-xs" style={{ color: C.ink, opacity: 0.55 }}>
+                    {r.flags[0].message}
+                  </p>
+                </div>
+                <div className="hidden text-right md:block">
+                  <p className="text-xs font-bold" style={{ color: r.waitingMinutes > 1440 ? C.orange : C.ink }}>
+                    {waitTime(r.waitingMinutes)}
+                  </p>
+                  <p className="text-[10px] uppercase tracking-wider" style={{ color: C.ink, opacity: 0.5 }}>
+                    waiting
+                  </p>
+                </div>
+                <ChevronRight size={16} style={{ color: C.ink, opacity: 0.4 }} />
+              </button>
+            ))}
+          </div>
+        </Card>
+
+        <Card>
+          <Eyebrow>Today</Eyebrow>
+          <H2 className="mt-1">Activity</H2>
+          <div className="mt-4 space-y-3">
+            {SAMPLE_AUDIT.slice(0, 6).map((e, i) => (
+              <div key={i} className="flex gap-3">
+                <div className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full" style={{ backgroundColor: e.actor === "system" ? C.ink3 : C.mintDeep }} />
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs leading-snug" style={{ color: C.ink }}>{e.action}</p>
+                  <p className="mt-0.5 text-[10px] font-medium uppercase tracking-wider" style={{ color: C.ink, opacity: 0.5 }}>
+                    {relTime(e.at)} · {e.actor}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+          <button
+            onClick={() => onNavigate("audit")}
+            className="mt-4 inline-flex items-center gap-1 text-xs font-bold underline underline-offset-4"
+            style={{ color: C.ink }}
+          >
+            See full audit log <ChevronRight size={12} />
+          </button>
+        </Card>
+      </div>
+    </div>
+  );
+}
+
+function StatCard({ eyebrow, value, delta, deltaPositive, context, accent, onClick }) {
+  const Wrapper = onClick ? "button" : "div";
+  return (
+    <Wrapper
+      onClick={onClick}
+      className={`relative overflow-hidden rounded-2xl bg-white p-5 text-left ${onClick ? "transition-all hover:scale-[1.01] active:scale-[0.99]" : ""}`}
+      style={{ border: `1px solid ${C.hairline2}` }}
+    >
+      <div
+        className="absolute right-0 top-0 h-20 w-20 -translate-y-6 translate-x-6 rounded-full opacity-30"
+        style={{ backgroundColor: accent }}
+      />
+      <div className="relative">
+        <Eyebrow>{eyebrow}</Eyebrow>
+        <p
+          className="mt-2 text-3xl font-black tabular-nums leading-none"
+          style={{ color: C.ink, fontFamily: "Fraunces, serif", fontVariationSettings: "'SOFT' 100" }}
+        >
+          {value}
+        </p>
+        <div className="mt-3 flex items-center gap-1.5">
+          {delta && (
+            <span
+              className="inline-flex items-center gap-0.5 rounded-full px-2 py-0.5 text-[10px] font-black"
+              style={{
+                backgroundColor: deltaPositive ? C.mint : C.orangeSoft,
+                color: C.ink,
+              }}
+            >
+              {deltaPositive ? <ArrowUp size={10} strokeWidth={3} /> : <ArrowDown size={10} strokeWidth={3} />}
+              {delta}
+            </span>
+          )}
+          <p className="text-[11px] font-medium" style={{ color: C.ink, opacity: 0.6 }}>
+            {context}
+          </p>
+        </div>
+      </div>
+    </Wrapper>
+  );
+}
+
+function AlertRow({ icon: Icon, color, title, sub, onClick }) {
+  const Wrapper = onClick ? "button" : "div";
+  return (
+    <Wrapper
+      onClick={onClick}
+      className={`flex w-full items-start gap-3 rounded-xl p-2 text-left ${onClick ? "transition-colors hover:bg-black/5" : ""}`}
+    >
+      <div
+        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full"
+        style={{ backgroundColor: color }}
+      >
+        <Icon size={15} style={{ color: C.ink }} />
+      </div>
+      <div className="min-w-0 flex-1">
+        <p className="text-sm font-bold leading-tight" style={{ color: C.ink }}>{title}</p>
+        <p className="mt-0.5 text-xs leading-tight" style={{ color: C.ink, opacity: 0.6 }}>{sub}</p>
+      </div>
+      {onClick && <ChevronRight size={14} style={{ color: C.ink, opacity: 0.4 }} className="mt-2" />}
+    </Wrapper>
+  );
+}
+
+/* =========================================================
+   PAGE: QUOTES
+   ========================================================= */
+function Quotes({ search, onOpenQuote }) {
+  const [statusFilter, setStatusFilter] = useState("All");
+  const filtered = useMemo(() => {
+    let list = SAMPLE_QUOTES;
+    if (statusFilter !== "All") list = list.filter((q) => q.status === statusFilter);
+    if (search) {
+      const s = search.toLowerCase();
+      list = list.filter(
+        (q) =>
+          q.id.toLowerCase().includes(s) ||
+          q.insured.toLowerCase().includes(s) ||
+          q.email.toLowerCase().includes(s)
+      );
+    }
+    return list;
+  }, [statusFilter, search]);
+
+  const statuses = ["All", "Draft", "Submitted", "Eligible", "Offered", "Referred", "Converted", "Declined", "Expired"];
+
+  return (
+    <div className="space-y-5">
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <Eyebrow>{filtered.length} of {SAMPLE_QUOTES.length}</Eyebrow>
+          <H1>Quotes</H1>
+        </div>
+        <div className="flex gap-2">
+          <Button variant="secondary" icon={Download} size="sm">Export CSV</Button>
+          <Button icon={Plus} size="sm">New quote</Button>
+        </div>
+      </div>
+
+      {/* Filter chips */}
+      <div className="flex flex-wrap gap-2">
+        {statuses.map((s) => {
+          const active = statusFilter === s;
+          return (
+            <button
+              key={s}
+              onClick={() => setStatusFilter(s)}
+              className="rounded-full px-3.5 py-1.5 text-xs font-bold transition-all"
+              style={{
+                backgroundColor: active ? C.ink : "white",
+                color: active ? "white" : C.ink,
+                border: `1px solid ${active ? C.ink : C.hairline}`,
+              }}
+            >
+              {s}
+              {s !== "All" && (
+                <span className="ml-1.5 opacity-60">
+                  {SAMPLE_QUOTES.filter((q) => q.status === s).length}
+                </span>
+              )}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Table */}
+      <Card padding="p-0" className="overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead>
+              <tr className="border-b text-left text-[10px] font-black uppercase tracking-wider" style={{ borderColor: C.hairline, color: C.ink, opacity: 0.55 }}>
+                <th className="px-5 py-3">Quote #</th>
+                <th className="px-5 py-3">Insured</th>
+                <th className="px-5 py-3 hidden md:table-cell">Occupation</th>
+                <th className="px-5 py-3 hidden lg:table-cell">Covers</th>
+                <th className="px-5 py-3 text-right">Premium</th>
+                <th className="px-5 py-3">Status</th>
+                <th className="px-5 py-3 hidden md:table-cell">Created</th>
+                <th className="px-2 py-3"></th>
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.map((q) => (
+                <tr
+                  key={q.id}
+                  onClick={() => onOpenQuote(q.id)}
+                  className="cursor-pointer border-b transition-colors hover:bg-black/[0.02] last:border-0"
+                  style={{ borderColor: C.hairline2 }}
+                >
+                  <td className="px-5 py-3.5 text-xs font-bold tabular-nums" style={{ color: C.ink }}>{q.id}</td>
+                  <td className="px-5 py-3.5">
+                    <p className="text-sm font-bold leading-tight" style={{ color: C.ink }}>{q.insured}</p>
+                    <p className="text-xs" style={{ color: C.ink, opacity: 0.55 }}>{q.email}</p>
+                  </td>
+                  <td className="px-5 py-3.5 text-xs hidden md:table-cell" style={{ color: C.ink, opacity: 0.8 }}>{q.occupation}</td>
+                  <td className="px-5 py-3.5 hidden lg:table-cell">
+                    <div className="flex gap-1">
+                      {q.covers.map((c) => (
+                        <span
+                          key={c}
+                          className="inline-flex h-6 min-w-[26px] items-center justify-center rounded-md px-1.5 text-[10px] font-black"
+                          style={{
+                            backgroundColor: c === "PI" ? C.mint : c === "PL" ? C.lime : C.purple,
+                            color: C.ink,
+                          }}
+                        >
+                          {c}
+                        </span>
+                      ))}
+                    </div>
+                  </td>
+                  <td className="px-5 py-3.5 text-right text-sm font-bold tabular-nums" style={{ color: C.ink }}>
+                    {fmt(q.premium)}
+                  </td>
+                  <td className="px-5 py-3.5">
+                    <StatusPill label={q.status} scheme={QUOTE_STATUS} size="sm" />
+                  </td>
+                  <td className="px-5 py-3.5 text-xs hidden md:table-cell" style={{ color: C.ink, opacity: 0.7 }}>{relTime(q.createdAt)}</td>
+                  <td className="px-2 py-3.5">
+                    <ChevronRight size={14} style={{ color: C.ink, opacity: 0.4 }} />
+                  </td>
+                </tr>
+              ))}
+              {filtered.length === 0 && (
+                <tr>
+                  <td colSpan={8} className="px-5 py-12 text-center text-sm" style={{ color: C.ink, opacity: 0.5 }}>
+                    No quotes match those filters.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </Card>
+    </div>
+  );
+}
+
+/* =========================================================
+   PAGE: POLICIES
+   ========================================================= */
+function Policies({ search }) {
+  const [statusFilter, setStatusFilter] = useState("All");
+  const filtered = useMemo(() => {
+    let list = SAMPLE_POLICIES;
+    if (statusFilter !== "All") list = list.filter((p) => p.status === statusFilter);
+    if (search) {
+      const s = search.toLowerCase();
+      list = list.filter(
+        (p) =>
+          p.id.toLowerCase().includes(s) ||
+          p.insured.toLowerCase().includes(s) ||
+          (p.nzbn || "").includes(s)
+      );
+    }
+    return list;
+  }, [statusFilter, search]);
+
+  const statuses = ["All", "Active", "Endorsed", "Pending Cancellation", "Cancelled", "Expired"];
+  const totalGwp = filtered.reduce((a, p) => a + p.premium, 0);
+
+  return (
+    <div className="space-y-5">
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <Eyebrow>{filtered.length} policies · GWP {fmt(totalGwp)}</Eyebrow>
+          <H1>Policies</H1>
+        </div>
+        <div className="flex gap-2">
+          <Button variant="secondary" icon={Download} size="sm">Export CSV</Button>
+        </div>
+      </div>
+
+      <div className="flex flex-wrap gap-2">
+        {statuses.map((s) => {
+          const active = statusFilter === s;
+          return (
+            <button
+              key={s}
+              onClick={() => setStatusFilter(s)}
+              className="rounded-full px-3.5 py-1.5 text-xs font-bold transition-all"
+              style={{
+                backgroundColor: active ? C.ink : "white",
+                color: active ? "white" : C.ink,
+                border: `1px solid ${active ? C.ink : C.hairline}`,
+              }}
+            >
+              {s}
+              {s !== "All" && (
+                <span className="ml-1.5 opacity-60">
+                  {SAMPLE_POLICIES.filter((p) => p.status === s).length}
+                </span>
+              )}
+            </button>
+          );
+        })}
+      </div>
+
+      <Card padding="p-0" className="overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead>
+              <tr className="border-b text-left text-[10px] font-black uppercase tracking-wider" style={{ borderColor: C.hairline, color: C.ink, opacity: 0.55 }}>
+                <th className="px-5 py-3">Policy #</th>
+                <th className="px-5 py-3">Insured</th>
+                <th className="px-5 py-3 hidden md:table-cell">Covers</th>
+                <th className="px-5 py-3 text-right">Premium</th>
+                <th className="px-5 py-3 hidden md:table-cell">Inception</th>
+                <th className="px-5 py-3 hidden lg:table-cell">Expires</th>
+                <th className="px-5 py-3">Status</th>
+                <th className="px-2 py-3"></th>
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.map((p) => {
+                const daysToExpiry = Math.ceil((p.expiry - TODAY) / (1000 * 60 * 60 * 24));
+                const expiringSoon = daysToExpiry > 0 && daysToExpiry <= 60 && p.status === "Active";
+                return (
+                  <tr key={p.id} className="border-b transition-colors hover:bg-black/[0.02] last:border-0" style={{ borderColor: C.hairline2 }}>
+                    <td className="px-5 py-3.5 text-xs font-bold tabular-nums" style={{ color: C.ink }}>{p.id}</td>
+                    <td className="px-5 py-3.5">
+                      <p className="text-sm font-bold leading-tight" style={{ color: C.ink }}>{p.insured}</p>
+                      <p className="text-xs tabular-nums" style={{ color: C.ink, opacity: 0.55 }}>NZBN {p.nzbn}</p>
+                    </td>
+                    <td className="px-5 py-3.5 hidden md:table-cell">
+                      <div className="flex gap-1">
+                        {p.covers.map((c) => (
+                          <span
+                            key={c}
+                            className="inline-flex h-6 min-w-[26px] items-center justify-center rounded-md px-1.5 text-[10px] font-black"
+                            style={{
+                              backgroundColor: c === "PI" ? C.mint : c === "PL" ? C.lime : C.purple,
+                              color: C.ink,
+                            }}
+                          >
+                            {c}
+                          </span>
+                        ))}
+                      </div>
+                    </td>
+                    <td className="px-5 py-3.5 text-right text-sm font-bold tabular-nums" style={{ color: C.ink }}>{fmt(p.premium)}</td>
+                    <td className="px-5 py-3.5 text-xs hidden md:table-cell" style={{ color: C.ink, opacity: 0.7 }}>{fmtDate(p.inception)}</td>
+                    <td className="px-5 py-3.5 hidden lg:table-cell">
+                      <p className="text-xs" style={{ color: expiringSoon ? C.orange : C.ink, opacity: expiringSoon ? 1 : 0.7, fontWeight: expiringSoon ? 700 : 500 }}>
+                        {fmtDate(p.expiry)}
+                      </p>
+                      {expiringSoon && (
+                        <p className="text-[10px] font-bold" style={{ color: C.orange }}>
+                          in {daysToExpiry} days
+                        </p>
+                      )}
+                    </td>
+                    <td className="px-5 py-3.5">
+                      <StatusPill label={p.status} scheme={POLICY_STATUS} size="sm" />
+                    </td>
+                    <td className="px-2 py-3.5">
+                      <IconButton icon={MoreHorizontal} label="Actions" />
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </Card>
+    </div>
+  );
+}
+
+/* =========================================================
+   PAGE: REFERRALS
+   ========================================================= */
+function Referrals({ onOpenReferral }) {
+  const [sort, setSort] = useState("oldest");
+  const sorted = useMemo(() => {
+    const list = [...SAMPLE_REFERRALS];
+    list.sort((a, b) => sort === "oldest" ? b.waitingMinutes - a.waitingMinutes : a.waitingMinutes - b.waitingMinutes);
+    return list;
+  }, [sort]);
+
+  const overSla = SAMPLE_REFERRALS.filter((r) => r.waitingMinutes > 1440).length;
+
+  return (
+    <div className="space-y-5">
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <Eyebrow>Underwriting queue</Eyebrow>
+          <H1>Referrals</H1>
+          <p className="mt-2 text-sm" style={{ color: C.ink, opacity: 0.7 }}>
+            <span className="font-bold" style={{ color: C.ink, opacity: 1 }}>{SAMPLE_REFERRALS.length} waiting</span> · <span className="font-bold" style={{ color: C.orange }}>{overSla} over 24h SLA</span>
+          </p>
+        </div>
+        <div className="flex gap-2">
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => setSort(sort === "oldest" ? "newest" : "oldest")}
+            icon={Filter}
+          >
+            Sort: {sort === "oldest" ? "Oldest first" : "Newest first"}
+          </Button>
+        </div>
+      </div>
+
+      <div className="space-y-3">
+        {sorted.map((r) => {
+          const overdue = r.waitingMinutes > 1440;
+          return (
+            <button
+              key={r.id}
+              onClick={() => onOpenReferral(r.id)}
+              className="w-full rounded-2xl bg-white p-5 text-left transition-all hover:scale-[1.005] active:scale-[0.998]"
+              style={{ border: `1px solid ${overdue ? C.orange : C.hairline2}`, borderWidth: overdue ? 1.5 : 1 }}
+            >
+              <div className="flex items-start justify-between gap-4">
+                <div className="flex items-start gap-4 min-w-0 flex-1">
+                  <div
+                    className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl"
+                    style={{ backgroundColor: C.purpleSoft }}
+                  >
+                    <AlertCircle size={20} style={{ color: C.ink }} />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="text-base font-black leading-tight" style={{ color: C.ink }}>{r.insured}</p>
+                      <span className="text-xs font-mono" style={{ color: C.ink, opacity: 0.5 }}>{r.id}</span>
+                      <StatusPill label="Referred" size="sm" />
+                    </div>
+                    <p className="mt-1 text-xs" style={{ color: C.ink, opacity: 0.65 }}>
+                      {r.occupation} · {r.revenue} · {r.employees}
+                    </p>
+                    <div className="mt-3 flex items-start gap-2">
+                      {r.flags.map((f) => (
+                        <div
+                          key={f.code}
+                          className="inline-flex items-center gap-1.5 rounded-lg px-2 py-1 text-xs font-medium"
+                          style={{ backgroundColor: C.purpleSoft, color: C.ink }}
+                        >
+                          <span className="font-mono text-[10px] font-black opacity-60">{f.code}</span>
+                          <span className="opacity-90">{f.message}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <p className="text-xs font-black uppercase tracking-wider" style={{ color: overdue ? C.orange : C.ink, opacity: overdue ? 1 : 0.55 }}>
+                    {waitTime(r.waitingMinutes)} waiting
+                  </p>
+                  <p className="mt-1 text-lg font-black tabular-nums" style={{ color: C.ink, fontFamily: "Fraunces, serif" }}>
+                    {r.estimatedPremium ? `~${fmt(r.estimatedPremium)}` : "—"}
+                  </p>
+                  <p className="text-[10px]" style={{ color: C.ink, opacity: 0.5 }}>est. annual</p>
+                </div>
+              </div>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+/* =========================================================
+   REFERRAL DETAIL DRAWER
+   ========================================================= */
+function ReferralDrawer({ referral, open, onClose, onAction }) {
+  const [noteText, setNoteText] = useState("");
+  const [tab, setTab] = useState("details");
+  const [adjustedPremium, setAdjustedPremium] = useState(referral?.estimatedPremium);
+
+  useEffect(() => {
+    if (referral) {
+      setAdjustedPremium(referral.estimatedPremium);
+      setNoteText("");
+      setTab("details");
+    }
+  }, [referral?.id]);
+
+  if (!open || !referral) return null;
+
+  return (
+    <div className="fixed inset-0 z-50">
+      <div className="absolute inset-0 bg-black/40" onClick={onClose} />
+      <div
+        className="absolute right-0 top-0 flex h-full w-full max-w-2xl flex-col bg-white"
+        style={{ boxShadow: "0 0 60px rgba(0,0,0,0.2)" }}
+      >
+        {/* Header */}
+        <div className="border-b p-6" style={{ borderColor: C.hairline2 }}>
+          <div className="flex items-start justify-between gap-4">
+            <div className="min-w-0">
+              <Eyebrow>Referral · {referral.id}</Eyebrow>
+              <H2 className="mt-1">{referral.insured}</H2>
+              <p className="mt-1 text-sm" style={{ color: C.ink, opacity: 0.7 }}>
+                {referral.contactName} · {referral.email}
+              </p>
+            </div>
+            <IconButton icon={X} onClick={onClose} label="Close" />
+          </div>
+
+          {/* Quick stats */}
+          <div className="mt-5 grid grid-cols-3 gap-3">
+            <div className="rounded-xl p-3" style={{ backgroundColor: C.bg }}>
+              <p className="text-[10px] font-black uppercase tracking-wider" style={{ color: C.ink, opacity: 0.55 }}>Waiting</p>
+              <p className="mt-0.5 text-base font-black" style={{ color: referral.waitingMinutes > 1440 ? C.orange : C.ink }}>
+                {waitTime(referral.waitingMinutes)}
+              </p>
+            </div>
+            <div className="rounded-xl p-3" style={{ backgroundColor: C.bg }}>
+              <p className="text-[10px] font-black uppercase tracking-wider" style={{ color: C.ink, opacity: 0.55 }}>Est. premium</p>
+              <p className="mt-0.5 text-base font-black tabular-nums" style={{ color: C.ink }}>
+                {fmt(referral.estimatedPremium)}
+              </p>
+            </div>
+            <div className="rounded-xl p-3" style={{ backgroundColor: C.bg }}>
+              <p className="text-[10px] font-black uppercase tracking-wider" style={{ color: C.ink, opacity: 0.55 }}>Quote ID</p>
+              <p className="mt-0.5 text-sm font-bold tabular-nums" style={{ color: C.ink }}>
+                {referral.quoteId}
+              </p>
+            </div>
+          </div>
+
+          {/* Tabs */}
+          <div className="mt-5 flex gap-1 border-b -mx-6 px-6" style={{ borderColor: C.hairline2 }}>
+            {[
+              { id: "details", label: "Risk profile" },
+              { id: "notes", label: `Notes (${referral.notes.length})` },
+              { id: "decision", label: "Decision" },
+            ].map((t) => (
+              <button
+                key={t.id}
+                onClick={() => setTab(t.id)}
+                className="relative px-3 py-2.5 text-sm font-bold transition-colors"
+                style={{ color: tab === t.id ? C.ink : "rgba(14,44,42,0.55)" }}
+              >
+                {t.label}
+                {tab === t.id && (
+                  <span
+                    className="absolute bottom-0 left-0 right-0 h-0.5 rounded-full"
+                    style={{ backgroundColor: C.ink }}
+                  />
+                )}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Body */}
+        <div className="flex-1 overflow-y-auto p-6">
+          {tab === "details" && (
+            <div className="space-y-5">
+              <div>
+                <p className="text-xs font-black uppercase tracking-wider mb-2" style={{ color: C.ink, opacity: 0.55 }}>Why this was referred</p>
+                <div className="space-y-2">
+                  {referral.flags.map((f) => (
+                    <div key={f.code} className="rounded-xl p-3" style={{ backgroundColor: C.purpleSoft }}>
+                      <p className="font-mono text-[10px] font-black opacity-70" style={{ color: C.ink }}>{f.code}</p>
+                      <p className="mt-1 text-sm" style={{ color: C.ink }}>{f.message}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-x-6 gap-y-4">
+                <DetailRow label="Occupation" value={referral.occupation} />
+                <DetailRow label="Annual revenue" value={referral.revenue} />
+                <DetailRow label="Employees" value={referral.employees} />
+                <DetailRow label="Covers requested" value={referral.covers.join(" + ")} />
+              </div>
+
+              <div>
+                <p className="text-xs font-black uppercase tracking-wider mb-2" style={{ color: C.ink, opacity: 0.55 }}>Description of services</p>
+                <p className="text-sm leading-relaxed rounded-xl bg-black/[0.03] p-4" style={{ color: C.ink }}>
+                  {referral.services}
+                </p>
+              </div>
+
+              <div className="rounded-xl p-4" style={{ backgroundColor: C.mintSoft }}>
+                <div className="flex items-center gap-2">
+                  <Mail size={14} style={{ color: C.ink }} />
+                  <p className="text-xs font-bold" style={{ color: C.ink }}>Contact the customer</p>
+                </div>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <Button variant="secondary" size="sm" icon={Mail}>Email</Button>
+                  <Button variant="secondary" size="sm" icon={Phone}>Call</Button>
+                  <Button variant="secondary" size="sm" icon={MessageSquare}>Request more info</Button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {tab === "notes" && (
+            <div className="space-y-4">
+              <div className="space-y-3">
+                {referral.notes.map((n, i) => (
+                  <div key={i} className="rounded-xl p-3" style={{ backgroundColor: n.author === "system" ? C.bg : C.mintSoft }}>
+                    <div className="flex items-center justify-between">
+                      <p className="text-xs font-black" style={{ color: C.ink }}>
+                        {n.author === "system" ? "🤖 System" : n.author}
+                      </p>
+                      <p className="text-[10px] font-medium uppercase tracking-wider" style={{ color: C.ink, opacity: 0.55 }}>
+                        {relTime(n.at)}
+                      </p>
+                    </div>
+                    <p className="mt-1.5 text-sm" style={{ color: C.ink }}>{n.text}</p>
+                  </div>
+                ))}
+              </div>
+              <div>
+                <p className="text-xs font-black uppercase tracking-wider mb-2" style={{ color: C.ink, opacity: 0.55 }}>Add a note</p>
+                <textarea
+                  value={noteText}
+                  onChange={(e) => setNoteText(e.target.value)}
+                  rows={3}
+                  placeholder="Internal note (only visible to admins)…"
+                  className="w-full rounded-xl border bg-white px-3 py-2 text-sm outline-none focus:border-current"
+                  style={{ borderColor: C.hairline, color: C.ink }}
+                />
+                <div className="mt-2 flex justify-end">
+                  <Button
+                    size="sm"
+                    icon={MessageSquare}
+                    disabled={!noteText.trim()}
+                    onClick={() => { onAction("note", { text: noteText }); setNoteText(""); }}
+                  >
+                    Add note
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {tab === "decision" && (
+            <div className="space-y-5">
+              <div>
+                <p className="text-xs font-black uppercase tracking-wider mb-2" style={{ color: C.ink, opacity: 0.55 }}>Adjust premium (optional)</p>
+                <div className="flex items-center gap-3">
+                  <span className="text-2xl font-black tabular-nums" style={{ color: C.ink, fontFamily: "Fraunces, serif" }}>
+                    $
+                  </span>
+                  <input
+                    type="number"
+                    value={adjustedPremium}
+                    onChange={(e) => setAdjustedPremium(parseInt(e.target.value, 10) || 0)}
+                    className="flex-1 rounded-xl border bg-white px-4 py-3 text-2xl font-black outline-none tabular-nums focus:border-current"
+                    style={{ borderColor: C.hairline, color: C.ink, fontFamily: "Fraunces, serif" }}
+                  />
+                  <span className="text-xs font-bold" style={{ color: C.ink, opacity: 0.55 }}>NZD / yr</span>
+                </div>
+                {adjustedPremium !== referral.estimatedPremium && (
+                  <p className="mt-2 text-xs" style={{ color: C.ink, opacity: 0.7 }}>
+                    Was {fmt(referral.estimatedPremium)} ·{" "}
+                    <span className="font-bold" style={{ color: adjustedPremium > referral.estimatedPremium ? C.orange : C.mintDeep }}>
+                      {adjustedPremium > referral.estimatedPremium ? "+" : ""}
+                      {fmt(adjustedPremium - referral.estimatedPremium)}
+                    </span>
+                  </p>
+                )}
+              </div>
+
+              <div className="rounded-xl p-4" style={{ backgroundColor: C.bg }}>
+                <p className="text-xs font-bold mb-2" style={{ color: C.ink }}>Decision options</p>
+                <div className="space-y-2">
+                  <Button
+                    variant="success"
+                    icon={CheckCircle2}
+                    className="w-full"
+                    onClick={() => onAction("approve", { premium: adjustedPremium })}
+                  >
+                    Approve & send terms to customer
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    icon={MessageSquare}
+                    className="w-full"
+                    onClick={() => onAction("info", {})}
+                  >
+                    Request more information
+                  </Button>
+                  <Button
+                    variant="danger"
+                    icon={XCircle}
+                    className="w-full"
+                    onClick={() => onAction("decline", {})}
+                  >
+                    Decline this referral
+                  </Button>
+                </div>
+              </div>
+
+              <p className="text-xs" style={{ color: C.ink, opacity: 0.55 }}>
+                All decisions are logged with your user ID, timestamp, and reason. The customer is automatically notified by email.
+              </p>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function DetailRow({ label, value }) {
+  return (
+    <div>
+      <p className="text-xs font-black uppercase tracking-wider" style={{ color: C.ink, opacity: 0.55 }}>{label}</p>
+      <p className="mt-0.5 text-sm font-bold" style={{ color: C.ink }}>{value}</p>
+    </div>
+  );
+}
+
+/* =========================================================
+   PAGE: RENEWALS
+   ========================================================= */
+function Renewals() {
+  const [filter, setFilter] = useState("All");
+  const filtered = filter === "All" ? SAMPLE_RENEWALS : SAMPLE_RENEWALS.filter((r) => r.status === filter);
+
+  const totalNew = SAMPLE_RENEWALS.reduce((a, r) => a + r.newPremium, 0);
+  const totalOld = SAMPLE_RENEWALS.reduce((a, r) => a + r.priorPremium, 0);
+  const delta = totalNew - totalOld;
+
+  return (
+    <div className="space-y-5">
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <Eyebrow>{SAMPLE_RENEWALS.length} due in next 60 days</Eyebrow>
+          <H1>Renewals</H1>
+        </div>
+        <div className="flex gap-2">
+          <Button variant="secondary" size="sm" icon={Download}>Export</Button>
+          <Button size="sm" icon={Plus}>Generate offers</Button>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <StatCard
+          eyebrow="Auto-renewable"
+          value={SAMPLE_RENEWALS.filter((r) => r.autoRenewable).length}
+          context="straight-through"
+          accent={C.mint}
+        />
+        <StatCard
+          eyebrow="Manual review"
+          value={SAMPLE_RENEWALS.filter((r) => !r.autoRenewable).length}
+          context="needs UW"
+          accent={C.purple}
+        />
+        <StatCard
+          eyebrow="Renewal premium"
+          value={fmt(totalNew)}
+          delta={`+${fmt(delta)}`}
+          deltaPositive
+          context="vs. prior term"
+          accent={C.lime}
+        />
+        <StatCard
+          eyebrow="Retention rate"
+          value="92%"
+          delta="+3 pts"
+          deltaPositive
+          context="last 90 days"
+          accent={C.orangeSoft}
+        />
+      </div>
+
+      <div className="flex flex-wrap gap-2">
+        {["All", "Queued", "Drafted", "Offered", "Referred", "Paid"].map((s) => {
+          const active = filter === s;
+          return (
+            <button
+              key={s}
+              onClick={() => setFilter(s)}
+              className="rounded-full px-3.5 py-1.5 text-xs font-bold transition-all"
+              style={{
+                backgroundColor: active ? C.ink : "white",
+                color: active ? "white" : C.ink,
+                border: `1px solid ${active ? C.ink : C.hairline}`,
+              }}
+            >
+              {s}
+            </button>
+          );
+        })}
+      </div>
+
+      <Card padding="p-0" className="overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead>
+              <tr className="border-b text-left text-[10px] font-black uppercase tracking-wider" style={{ borderColor: C.hairline, color: C.ink, opacity: 0.55 }}>
+                <th className="px-5 py-3">Renewal #</th>
+                <th className="px-5 py-3">Insured</th>
+                <th className="px-5 py-3 hidden md:table-cell">Expires</th>
+                <th className="px-5 py-3 text-right hidden md:table-cell">Prior</th>
+                <th className="px-5 py-3 text-right">Renewal</th>
+                <th className="px-5 py-3">Status</th>
+                <th className="px-5 py-3 hidden lg:table-cell">Notes</th>
+                <th className="px-2 py-3"></th>
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.map((r) => {
+                const days = Math.ceil((r.expiry - TODAY) / (1000 * 60 * 60 * 24));
+                const change = r.newPremium - r.priorPremium;
+                return (
+                  <tr key={r.id} className="border-b transition-colors hover:bg-black/[0.02] last:border-0" style={{ borderColor: C.hairline2 }}>
+                    <td className="px-5 py-3.5 text-xs font-bold tabular-nums" style={{ color: C.ink }}>{r.id}</td>
+                    <td className="px-5 py-3.5">
+                      <p className="text-sm font-bold" style={{ color: C.ink }}>{r.insured}</p>
+                      <p className="text-xs tabular-nums" style={{ color: C.ink, opacity: 0.55 }}>{r.policyId}</p>
+                    </td>
+                    <td className="px-5 py-3.5 text-xs hidden md:table-cell" style={{ color: C.ink }}>
+                      <p className="font-bold">{fmtDate(r.expiry)}</p>
+                      <p className="opacity-55">in {days} days</p>
+                    </td>
+                    <td className="px-5 py-3.5 text-right text-xs tabular-nums hidden md:table-cell" style={{ color: C.ink, opacity: 0.7 }}>{fmt(r.priorPremium)}</td>
+                    <td className="px-5 py-3.5 text-right">
+                      <p className="text-sm font-bold tabular-nums" style={{ color: C.ink }}>{fmt(r.newPremium)}</p>
+                      <p className="text-[10px] tabular-nums" style={{ color: change > 0 ? C.orange : C.mintDeep }}>
+                        {change > 0 ? "+" : ""}{fmt(change)}
+                      </p>
+                    </td>
+                    <td className="px-5 py-3.5">
+                      <StatusPill label={r.status} scheme={RENEWAL_STATUS} size="sm" />
+                    </td>
+                    <td className="px-5 py-3.5 text-xs hidden lg:table-cell" style={{ color: C.ink, opacity: 0.7 }}>{r.notes}</td>
+                    <td className="px-2 py-3.5">
+                      <IconButton icon={MoreHorizontal} label="Actions" />
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </Card>
+    </div>
+  );
+}
+
+/* =========================================================
+   PAGE: CONFIGURATION
+   ========================================================= */
+function Configuration() {
+  const [tab, setTab] = useState("occupations");
+  const tabs = [
+    { id: "occupations", label: "Occupation catalogue", icon: ListChecks },
+    { id: "rates", label: "Rating tables", icon: TrendingUp },
+    { id: "rules", label: "Rules engine", icon: Sliders },
+    { id: "wording", label: "Wording & docs", icon: FileText },
+    { id: "emails", label: "Email templates", icon: Mail },
+  ];
+
+  return (
+    <div className="space-y-5">
+      <div>
+        <Eyebrow>Product configuration</Eyebrow>
+        <H1>Configuration</H1>
+        <p className="mt-2 text-sm" style={{ color: C.ink, opacity: 0.7 }}>
+          Edit product rules, pricing, and content without engineering. Changes are versioned and effective-dated.
+        </p>
+      </div>
+
+      <div className="flex flex-wrap gap-2 border-b pb-3" style={{ borderColor: C.hairline2 }}>
+        {tabs.map((t) => {
+          const Icon = t.icon;
+          const active = tab === t.id;
+          return (
+            <button
+              key={t.id}
+              onClick={() => setTab(t.id)}
+              className="inline-flex items-center gap-2 rounded-full px-3.5 py-1.5 text-xs font-bold transition-all"
+              style={{
+                backgroundColor: active ? C.ink : "transparent",
+                color: active ? "white" : C.ink,
+                border: `1px solid ${active ? C.ink : C.hairline}`,
+              }}
+            >
+              <Icon size={13} strokeWidth={2.5} />
+              {t.label}
+            </button>
+          );
+        })}
+      </div>
+
+      {tab === "occupations" && <OccupationsConfig />}
+      {tab === "rates" && <RatesConfig />}
+      {tab === "rules" && <RulesConfig />}
+      {tab === "wording" && <ConfigPlaceholder title="Wording & document templates" body="Manage policy wording versions, schedule templates, certificate of currency layouts, and effective-date scheduling." />}
+      {tab === "emails" && <ConfigPlaceholder title="Email templates" body="Edit transactional email content for quote saved, policy issued, payment receipts, renewal invitations, referral updates, and cancellation confirmations." />}
+    </div>
+  );
+}
+
+function OccupationsConfig() {
+  const [list, setList] = useState(SAMPLE_OCCUPATIONS);
+  const [editing, setEditing] = useState(null);
+
+  const updateRow = (code, field, value) => {
+    setList(list.map((o) => o.code === code ? { ...o, [field]: value } : o));
+  };
+
+  return (
+    <Card padding="p-0">
+      <div className="flex items-center justify-between border-b p-5" style={{ borderColor: C.hairline2 }}>
+        <div>
+          <H2>Occupation catalogue</H2>
+          <p className="mt-1 text-xs" style={{ color: C.ink, opacity: 0.6 }}>
+            {list.length} occupations · v3.2 · Last published 25h ago
+          </p>
+        </div>
+        <div className="flex gap-2">
+          <Button variant="secondary" size="sm" icon={Save}>Save draft</Button>
+          <Button size="sm" icon={Plus}>Add occupation</Button>
+        </div>
+      </div>
+
+      <div className="overflow-x-auto">
+        <table className="w-full">
+          <thead>
+            <tr className="border-b text-left text-[10px] font-black uppercase tracking-wider" style={{ borderColor: C.hairline2, color: C.ink, opacity: 0.55 }}>
+              <th className="px-5 py-3">Code</th>
+              <th className="px-5 py-3">Label</th>
+              <th className="px-5 py-3">Tier</th>
+              <th className="px-5 py-3 text-right">Rate ×</th>
+              <th className="px-5 py-3">Status</th>
+              <th className="px-2 py-3"></th>
+            </tr>
+          </thead>
+          <tbody>
+            {list.map((o) => {
+              const isEditing = editing === o.code;
+              const statusColor = {
+                Active: { bg: C.mint, fg: C.ink },
+                Refer: { bg: C.purple, fg: C.ink },
+                Decline: { bg: C.orange, fg: "white" },
+              }[o.status];
+              return (
+                <tr key={o.code} className="border-b last:border-0" style={{ borderColor: C.hairline2 }}>
+                  <td className="px-5 py-3 font-mono text-xs font-bold" style={{ color: C.ink }}>{o.code}</td>
+                  <td className="px-5 py-3 text-sm" style={{ color: C.ink }}>{o.label}</td>
+                  <td className="px-5 py-3">
+                    <span
+                      className="inline-flex h-6 w-6 items-center justify-center rounded-md text-[11px] font-black"
+                      style={{
+                        backgroundColor: o.tier === "A" ? C.mint : o.tier === "B" ? C.lime : o.tier === "C" ? C.orangeSoft : o.tier === "R" ? C.purple : "#E5E7EB",
+                        color: C.ink,
+                      }}
+                    >
+                      {o.tier}
+                    </span>
+                  </td>
+                  <td className="px-5 py-3 text-right">
+                    {isEditing && o.mult != null ? (
+                      <input
+                        type="number"
+                        step="0.05"
+                        value={o.mult}
+                        onChange={(e) => updateRow(o.code, "mult", parseFloat(e.target.value))}
+                        className="w-20 rounded-md border bg-white px-2 py-1 text-right text-xs font-bold tabular-nums outline-none"
+                        style={{ borderColor: C.ink, color: C.ink }}
+                      />
+                    ) : (
+                      <span className="text-xs font-bold tabular-nums" style={{ color: C.ink, opacity: o.mult ? 1 : 0.4 }}>
+                        {o.mult ? `${o.mult.toFixed(2)}×` : "—"}
+                      </span>
+                    )}
+                  </td>
+                  <td className="px-5 py-3">
+                    <span
+                      className="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-black uppercase tracking-wider"
+                      style={{ backgroundColor: statusColor.bg, color: statusColor.fg }}
+                    >
+                      {o.status}
+                    </span>
+                  </td>
+                  <td className="px-2 py-3">
+                    <IconButton
+                      icon={isEditing ? Check : Edit3}
+                      onClick={() => setEditing(isEditing ? null : o.code)}
+                      label={isEditing ? "Save" : "Edit"}
+                    />
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+
+      <div className="border-t p-4 text-center" style={{ borderColor: C.hairline2, backgroundColor: C.bg }}>
+        <p className="text-xs" style={{ color: C.ink, opacity: 0.65 }}>
+          Changes save as a draft. Click <span className="font-bold">Publish</span> to make them live for new quotes.
+        </p>
+      </div>
+    </Card>
+  );
+}
+
+function RatesConfig() {
+  return (
+    <Card>
+      <H2>Rating tables</H2>
+      <p className="mt-2 text-sm" style={{ color: C.ink, opacity: 0.7 }}>
+        Per-cover base rates and the multipliers applied for limit, excess, revenue band, and risk loadings. Currently using <span className="font-bold">v2.4</span>.
+      </p>
+
+      <div className="mt-6 grid gap-5 md:grid-cols-3">
+        {[
+          { name: "Professional Indemnity", short: "PI", chip: C.mint, base: 480 },
+          { name: "Public Liability", short: "PL", chip: C.lime, base: 220 },
+          { name: "Statutory Liability", short: "SL", chip: C.purple, base: 140 },
+        ].map((c) => (
+          <div key={c.short} className="rounded-2xl p-5" style={{ backgroundColor: c.chip }}>
+            <p
+              className="text-base font-black"
+              style={{ fontFamily: "Fraunces, serif", color: C.ink, fontVariationSettings: "'SOFT' 100" }}
+            >
+              {c.name}
+            </p>
+            <p className="mt-3 text-[10px] font-black uppercase tracking-wider" style={{ color: C.ink, opacity: 0.6 }}>Base annual rate</p>
+            <p className="text-3xl font-black tabular-nums" style={{ color: C.ink, fontFamily: "Fraunces, serif" }}>
+              {fmt(c.base)}
+            </p>
+            <p className="mt-1 text-xs" style={{ color: C.ink, opacity: 0.7 }}>
+              For Tier A occupation, $100k–$250k revenue, base limit
+            </p>
+            <Button variant="secondary" size="sm" icon={Edit3} className="mt-4">Edit table</Button>
+          </div>
+        ))}
+      </div>
+
+      <div className="mt-6 rounded-2xl p-5" style={{ backgroundColor: C.bg }}>
+        <p className="text-xs font-black uppercase tracking-wider mb-3" style={{ color: C.ink, opacity: 0.6 }}>Active loadings & discounts</p>
+        <div className="grid gap-2 md:grid-cols-2">
+          {[
+            { label: "Bundle discount (PI + PL + SL)", value: "−10%" },
+            { label: "Subcontractor use loading", value: "+8%" },
+            { label: "Overseas work loading", value: "+12%" },
+            { label: "Low excess loading ($1k or less)", value: "+10%" },
+            { label: "High excess discount ($5k+)", value: "−8%" },
+            { label: "Admin fee", value: "$25" },
+            { label: "Regulatory levy", value: "0.5%" },
+            { label: "GST", value: "15%" },
+          ].map((row) => (
+            <div key={row.label} className="flex items-center justify-between rounded-lg bg-white px-3 py-2">
+              <span className="text-xs font-medium" style={{ color: C.ink }}>{row.label}</span>
+              <span className="text-xs font-black tabular-nums" style={{ color: C.ink }}>{row.value}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </Card>
+  );
+}
+
+function RulesConfig() {
+  const rules = [
+    { code: "OCC_OUT_OF_APPETITE", type: "Decline", message: "Occupation flagged as out of appetite", priority: 1 },
+    { code: "REV_OVER_2M", type: "Refer", message: "Annual revenue over $2M", priority: 2 },
+    { code: "OCC_REFER", type: "Refer", message: "Occupation flagged as refer-only", priority: 3 },
+    { code: "PRIOR_CLAIMS", type: "Refer", message: "Customer indicated prior claims or known circumstances", priority: 4 },
+    { code: "JUR_NORTH_AMERICA", type: "Refer", message: "Work performed in US or Canada", priority: 5 },
+    { code: "SUBBIES_NO_AGREEMENT", type: "Refer", message: "Subcontractor use without written agreements", priority: 6 },
+    { code: "MIN_LIMIT_GOV", type: "Warn", message: "Government contract risk often requires $1M+ limits", priority: 7 },
+  ];
+  return (
+    <Card padding="p-0">
+      <div className="flex items-center justify-between p-5">
+        <div>
+          <H2>Rules engine</H2>
+          <p className="mt-1 text-xs" style={{ color: C.ink, opacity: 0.6 }}>
+            Decline, refer, and warn rules evaluated for every quote. Rules fire in priority order.
+          </p>
+        </div>
+        <Button size="sm" icon={Plus}>Add rule</Button>
+      </div>
+      <div className="overflow-x-auto">
+        <table className="w-full">
+          <thead>
+            <tr className="border-y text-left text-[10px] font-black uppercase tracking-wider" style={{ borderColor: C.hairline2, color: C.ink, opacity: 0.55 }}>
+              <th className="px-5 py-3">Priority</th>
+              <th className="px-5 py-3">Rule code</th>
+              <th className="px-5 py-3">Type</th>
+              <th className="px-5 py-3">Message</th>
+              <th className="px-2 py-3"></th>
+            </tr>
+          </thead>
+          <tbody>
+            {rules.map((r) => (
+              <tr key={r.code} className="border-b last:border-0" style={{ borderColor: C.hairline2 }}>
+                <td className="px-5 py-3 text-xs font-bold tabular-nums" style={{ color: C.ink }}>{r.priority}</td>
+                <td className="px-5 py-3 font-mono text-xs font-bold" style={{ color: C.ink }}>{r.code}</td>
+                <td className="px-5 py-3">
+                  <span
+                    className="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-black uppercase"
+                    style={{
+                      backgroundColor: r.type === "Decline" ? C.orange : r.type === "Refer" ? C.purple : C.lime,
+                      color: r.type === "Decline" ? "white" : C.ink,
+                    }}
+                  >
+                    {r.type}
+                  </span>
+                </td>
+                <td className="px-5 py-3 text-sm" style={{ color: C.ink }}>{r.message}</td>
+                <td className="px-2 py-3">
+                  <IconButton icon={Edit3} label="Edit" />
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </Card>
+  );
+}
+
+function ConfigPlaceholder({ title, body }) {
+  return (
+    <Card>
+      <div className="flex items-start gap-4">
+        <div
+          className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl"
+          style={{ backgroundColor: C.mintSoft }}
+        >
+          <Sparkles size={20} style={{ color: C.ink }} />
+        </div>
+        <div>
+          <H2>{title}</H2>
+          <p className="mt-2 text-sm leading-relaxed" style={{ color: C.ink, opacity: 0.75 }}>
+            {body}
+          </p>
+          <p className="mt-3 text-xs italic" style={{ color: C.ink, opacity: 0.5 }}>
+            Stub for prototype — let me know if this section needs to be fleshed out next.
+          </p>
+        </div>
+      </div>
+    </Card>
+  );
+}
+
+/* =========================================================
+   PAGE: AUDIT LOG
+   ========================================================= */
+function AuditLog({ search }) {
+  const filtered = useMemo(() => {
+    if (!search) return SAMPLE_AUDIT;
+    const s = search.toLowerCase();
+    return SAMPLE_AUDIT.filter(
+      (e) => e.action.toLowerCase().includes(s) || e.actor.toLowerCase().includes(s)
+    );
+  }, [search]);
+
+  return (
+    <div className="space-y-5">
+      <div>
+        <Eyebrow>{filtered.length} events shown</Eyebrow>
+        <H1>Audit log</H1>
+        <p className="mt-2 text-sm" style={{ color: C.ink, opacity: 0.7 }}>
+          Every system and user action is recorded immutably with timestamp, actor, and object reference.
+        </p>
+      </div>
+
+      <Card padding="p-0">
+        <div className="divide-y" style={{ borderColor: C.hairline2 }}>
+          {filtered.map((e, i) => (
+            <div key={i} className="flex items-start gap-4 p-4" style={{ borderColor: C.hairline2 }}>
+              <div className="shrink-0 text-right" style={{ minWidth: 72 }}>
+                <p className="text-xs font-bold tabular-nums" style={{ color: C.ink }}>
+                  {fmtDateTime(e.at)}
+                </p>
+                <p className="text-[10px]" style={{ color: C.ink, opacity: 0.55 }}>
+                  {relTime(e.at)}
+                </p>
+              </div>
+              <div
+                className="mt-1.5 h-2 w-2 shrink-0 rounded-full"
+                style={{ backgroundColor: e.actor === "system" ? C.ink3 : C.mintDeep }}
+              />
+              <div className="min-w-0 flex-1">
+                <p className="text-sm" style={{ color: C.ink }}>{e.action}</p>
+                <p className="mt-0.5 text-[10px] font-medium uppercase tracking-wider" style={{ color: C.ink, opacity: 0.55 }}>
+                  {e.actor}
+                </p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </Card>
+    </div>
+  );
+}
+
+/* =========================================================
+   QUOTE DRAWER (simple)
+   ========================================================= */
+function QuoteDrawer({ quote, open, onClose }) {
+  if (!open || !quote) return null;
+  return (
+    <div className="fixed inset-0 z-50">
+      <div className="absolute inset-0 bg-black/40" onClick={onClose} />
+      <div className="absolute right-0 top-0 flex h-full w-full max-w-xl flex-col bg-white">
+        <div className="border-b p-6" style={{ borderColor: C.hairline2 }}>
+          <div className="flex items-start justify-between">
+            <div>
+              <Eyebrow>Quote · {quote.id}</Eyebrow>
+              <H2 className="mt-1">{quote.insured}</H2>
+              <p className="mt-1 text-sm" style={{ color: C.ink, opacity: 0.7 }}>{quote.email}</p>
+            </div>
+            <IconButton icon={X} onClick={onClose} label="Close" />
+          </div>
+          <div className="mt-4 flex gap-2">
+            <StatusPill label={quote.status} scheme={QUOTE_STATUS} />
+            {quote.covers.map((c) => (
+              <span
+                key={c}
+                className="inline-flex items-center rounded-full px-2 py-1 text-[10px] font-black"
+                style={{ backgroundColor: c === "PI" ? C.mint : c === "PL" ? C.lime : C.purple, color: C.ink }}
+              >
+                {c}
+              </span>
+            ))}
+          </div>
+        </div>
+        <div className="flex-1 overflow-y-auto p-6 space-y-4">
+          <div className="grid grid-cols-2 gap-x-6 gap-y-3">
+            <DetailRow label="Occupation" value={quote.occupation} />
+            <DetailRow label="Revenue band" value={quote.revenue} />
+            <DetailRow label="Created" value={fmtDateTime(quote.createdAt)} />
+            <DetailRow label="Premium" value={fmt(quote.premium)} />
+          </div>
+          <div className="rounded-xl p-4" style={{ backgroundColor: C.bg }}>
+            <p className="text-xs font-black uppercase tracking-wider mb-2" style={{ color: C.ink, opacity: 0.6 }}>Contact</p>
+            <div className="flex gap-2">
+              <Button variant="secondary" size="sm" icon={Mail}>Email customer</Button>
+              <Button variant="secondary" size="sm" icon={ExternalLink}>Open full record</Button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* =========================================================
+   TOAST
+   ========================================================= */
+function Toast({ message, onClose }) {
+  useEffect(() => {
+    if (!message) return;
+    const t = setTimeout(onClose, 2800);
+    return () => clearTimeout(t);
+  }, [message, onClose]);
+  if (!message) return null;
+  return (
+    <div className="fixed bottom-6 left-1/2 z-50 -translate-x-1/2 rounded-full px-5 py-3 shadow-xl" style={{ backgroundColor: C.ink }}>
+      <p className="text-sm font-bold text-white">{message}</p>
+    </div>
+  );
+}
+
+/* =========================================================
+   MAIN APP
+   ========================================================= */
+export default function App() {
+  const [page, setPage] = useState("dashboard");
+  const [search, setSearch] = useState("");
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const [openReferralId, setOpenReferralId] = useState(null);
+  const [openQuoteId, setOpenQuoteId] = useState(null);
+  const [toast, setToast] = useState("");
+
+  const openReferral = SAMPLE_REFERRALS.find((r) => r.id === openReferralId);
+  const openQuote = SAMPLE_QUOTES.find((q) => q.id === openQuoteId);
+
+  const badges = {
+    quotes: SAMPLE_QUOTES.filter((q) => ["Submitted", "Eligible", "Offered"].includes(q.status)).length,
+    policies: SAMPLE_POLICIES.filter((p) => p.status === "Pending Cancellation").length,
+    referrals: SAMPLE_REFERRALS.length,
+    renewals: SAMPLE_RENEWALS.filter((r) => !["Paid", "Declined", "Expired"].includes(r.status)).length,
+  };
+
+  const titles = {
+    dashboard: "Dashboard",
+    quotes: "Quotes",
+    policies: "Policies",
+    referrals: "Referrals",
+    renewals: "Renewals",
+    config: "Configuration",
+    audit: "Audit log",
+  };
+
+  const handleReferralAction = (action, payload) => {
+    if (action === "approve") {
+      setToast(`✓ Approved REF ${openReferral.id} at ${fmt(payload.premium)} — terms emailed to customer`);
+      setOpenReferralId(null);
+    } else if (action === "decline") {
+      setToast(`✗ Declined REF ${openReferral.id} — customer notified`);
+      setOpenReferralId(null);
+    } else if (action === "info") {
+      setToast(`📩 Information request emailed to ${openReferral.email}`);
+    } else if (action === "note") {
+      setToast(`📝 Note added to REF ${openReferral.id}`);
+    }
+  };
+
+  return (
+    <div className="min-h-screen" style={{ backgroundColor: C.bg, fontFamily: "Manrope, sans-serif" }}>
+      {/* Google fonts */}
+      <link rel="preconnect" href="https://fonts.googleapis.com" />
+      <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
+      <link
+        href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght,SOFT@9..144,400..900,0..100&family=Manrope:wght@400;500;600;700;800&display=swap"
+        rel="stylesheet"
+      />
+
+      <Sidebar
+        active={page}
+        onNavigate={setPage}
+        badges={badges}
+        mobileOpen={mobileOpen}
+        onCloseMobile={() => setMobileOpen(false)}
+      />
+
+      <div className="lg:pl-64">
+        <TopBar
+          onMobileMenu={() => setMobileOpen(true)}
+          search={search}
+          setSearch={setSearch}
+          title={titles[page]}
+        />
+
+        <main className="mx-auto max-w-7xl p-5 lg:p-8">
+          {page === "dashboard" && (
+            <Dashboard onNavigate={setPage} onOpenReferral={setOpenReferralId} />
+          )}
+          {page === "quotes" && (
+            <Quotes search={search} onOpenQuote={setOpenQuoteId} />
+          )}
+          {page === "policies" && <Policies search={search} />}
+          {page === "referrals" && (
+            <Referrals onOpenReferral={setOpenReferralId} />
+          )}
+          {page === "renewals" && <Renewals />}
+          {page === "config" && <Configuration />}
+          {page === "audit" && <AuditLog search={search} />}
+        </main>
+      </div>
+
+      <ReferralDrawer
+        referral={openReferral}
+        open={!!openReferral}
+        onClose={() => setOpenReferralId(null)}
+        onAction={handleReferralAction}
+      />
+
+      <QuoteDrawer
+        quote={openQuote}
+        open={!!openQuote}
+        onClose={() => setOpenQuoteId(null)}
+      />
+
+      <Toast message={toast} onClose={() => setToast("")} />
+    </div>
+  );
+}
+
+const root = ReactDOM.createRoot(document.getElementById('root'));
+root.render(<App />);
+</script>
+</body>
+</html>

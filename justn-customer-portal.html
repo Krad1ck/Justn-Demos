@@ -1,0 +1,1983 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>JUSTN Customer Portal</title>
+<script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+import { useState, useEffect, useMemo } from "react";
+import {
+  ArrowRight,
+  ArrowLeft,
+  Check,
+  X,
+  AlertCircle,
+  Shield,
+  FileText,
+  Download,
+  Mail,
+  Phone,
+  User,
+  HelpCircle,
+  Home,
+  Bell,
+  Edit3,
+  ChevronRight,
+  CheckCircle2,
+  Loader2,
+  Sparkles,
+  Briefcase,
+  Clock,
+  Calendar,
+  CreditCard,
+  Lock,
+  Info,
+  Send,
+  MessageSquare,
+  Settings,
+  RotateCcw,
+  Plus,
+  Building2,
+  MapPin,
+  Hash,
+  LogOut,
+  ChevronLeft,
+  Receipt,
+  ScrollText,
+  ShieldCheck,
+  AlertTriangle,
+  Camera,
+} from "lucide-react";
+
+/* =========================================================
+   JUSTN Customer Portal — Prototype
+   Single-file React artifact
+   ========================================================= */
+
+/* --------- BRAND TOKENS --------- */
+const C = {
+  mint: "#7AE5C0",
+  mintSoft: "#B8F2DA",
+  mintDeep: "#5DD3AA",
+  ink: "#0E2C2A",
+  inkSoft: "#1A3D3A",
+  ink3: "#446660",
+  lime: "#C8E866",
+  orange: "#F26B3A",
+  orangeSoft: "#FFD9C7",
+  purple: "#C5A8E0",
+  purpleSoft: "#E8DBF5",
+  cream: "#FAF7F2",
+  paper: "#FFFFFF",
+  bg: "#F4F1EC",
+  hairline: "rgba(14,44,42,0.10)",
+  hairline2: "rgba(14,44,42,0.06)",
+};
+
+/* --------- SAMPLE DATA --------- */
+const TODAY = new Date("2026-04-20T14:30:00+12:00");
+const ago = (mins) => new Date(TODAY.getTime() - mins * 60000);
+const inDays = (d) => new Date(TODAY.getTime() + d * 24 * 60 * 60 * 1000);
+
+const CUSTOMER = {
+  firstName: "Alex",
+  lastName: "Tane",
+  fullName: "Alex Tane",
+  initials: "AT",
+  email: "alex@pacificcode.co.nz",
+  mobile: "+64 21 555 1234",
+  company: "Pacific Code Ltd",
+  tradingName: "Pacific Code",
+  nzbn: "9429 0461 23456",
+  entityType: "Limited company",
+  address: "Level 2, 88 Quay Street, Auckland 1010",
+  joinedAt: new Date("2024-04-20"),
+};
+
+const ACTIVE_POLICY = {
+  id: "POL-2025-000087",
+  status: "Active",
+  inception: new Date("2025-05-15"),
+  expiry: new Date("2026-05-15"),
+  term: "2025/26",
+  covers: [
+    { code: "PI", name: "Professional Indemnity", limit: 1000000, excess: 2500, premium: 504 },
+    { code: "PL", name: "Public Liability", limit: 2000000, excess: 1000, premium: 240 },
+    { code: "SL", name: "Statutory Liability", limit: 500000, excess: 1000, premium: 154 },
+  ],
+  subtotal: 898,
+  bundleDiscount: 90,
+  adminFee: 25,
+  levy: 4,
+  gst: 178,
+  total: 1184,
+  paidOn: new Date("2025-05-15"),
+  invoiceId: "INV-2025-000087",
+};
+
+const HISTORICAL_POLICIES = [
+  {
+    id: "POL-2024-000056",
+    status: "Expired",
+    inception: new Date("2024-05-15"),
+    expiry: new Date("2025-05-15"),
+    term: "2024/25",
+    covers: [
+      { code: "PI", name: "Professional Indemnity", limit: 1000000, excess: 2500, premium: 480 },
+      { code: "PL", name: "Public Liability", limit: 2000000, excess: 1000, premium: 220 },
+      { code: "SL", name: "Statutory Liability", limit: 500000, excess: 1000, premium: 140 },
+    ],
+    subtotal: 840,
+    bundleDiscount: 84,
+    adminFee: 25,
+    levy: 4,
+    gst: 168,
+    total: 1120,
+    paidOn: new Date("2024-05-15"),
+    invoiceId: "INV-2024-000056",
+  },
+];
+
+const RENEWAL = {
+  id: "REN-2026-0042",
+  policyId: ACTIVE_POLICY.id,
+  status: "Offered",
+  effective: new Date("2026-05-15"),
+  expiry: new Date("2027-05-15"),
+  priorPremium: 1184,
+  newPremium: 1232,
+  validUntil: new Date("2026-05-14"),
+  message: "Slight rating uplift for inflation. Your no-claims status is maintained.",
+  covers: [
+    { code: "PI", name: "Professional Indemnity", limit: 1000000, excess: 2500, premium: 524 },
+    { code: "PL", name: "Public Liability", limit: 2000000, excess: 1000, premium: 250 },
+    { code: "SL", name: "Statutory Liability", limit: 500000, excess: 1000, premium: 160 },
+  ],
+};
+
+const DOCUMENTS = [
+  { id: 1, type: "Schedule", name: "Schedule of Insurance", file: "JUSTN_Schedule_POL-2025-000087.pdf", policyId: ACTIVE_POLICY.id, size: "124 KB", issuedAt: ACTIVE_POLICY.paidOn },
+  { id: 2, type: "Certificate", name: "Certificate of Currency", file: "JUSTN_Certificate_POL-2025-000087.pdf", policyId: ACTIVE_POLICY.id, size: "98 KB", issuedAt: ACTIVE_POLICY.paidOn },
+  { id: 3, type: "Invoice", name: "Tax Invoice", file: "JUSTN_Invoice_INV-2025-000087.pdf", policyId: ACTIVE_POLICY.id, size: "76 KB", issuedAt: ACTIVE_POLICY.paidOn },
+  { id: 4, type: "Wording", name: "Policy Wording v3.0", file: "JUSTN_Wording_v3.pdf", policyId: ACTIVE_POLICY.id, size: "412 KB", issuedAt: ACTIVE_POLICY.paidOn },
+  { id: 5, type: "Schedule", name: "Schedule of Insurance", file: "JUSTN_Schedule_POL-2024-000056.pdf", policyId: "POL-2024-000056", size: "118 KB", issuedAt: HISTORICAL_POLICIES[0].paidOn },
+  { id: 6, type: "Certificate", name: "Certificate of Currency", file: "JUSTN_Certificate_POL-2024-000056.pdf", policyId: "POL-2024-000056", size: "94 KB", issuedAt: HISTORICAL_POLICIES[0].paidOn },
+  { id: 7, type: "Invoice", name: "Tax Invoice", file: "JUSTN_Invoice_INV-2024-000056.pdf", policyId: "POL-2024-000056", size: "72 KB", issuedAt: HISTORICAL_POLICIES[0].paidOn },
+];
+
+const ACTIVITY = [
+  { at: ago(60 * 24 * 5), type: "renewal", message: "Renewal invitation ready for your review" },
+  { at: ago(60 * 24 * 340), type: "doc", message: "Schedule and certificate issued for POL-2025-000087" },
+  { at: ago(60 * 24 * 340), type: "payment", message: "Payment received: $1,184" },
+  { at: ago(60 * 24 * 340), type: "policy", message: "Cover commenced under POL-2025-000087" },
+  { at: ago(60 * 24 * 700), type: "policy", message: "Welcome to JUSTN — your first policy was bound" },
+];
+
+/* --------- HELPERS --------- */
+const fmt = (n) => n == null ? "—" : n.toLocaleString("en-NZ", { style: "currency", currency: "NZD", maximumFractionDigits: 0 });
+const fmtLimit = (n) => (n >= 1000000 ? `$${n / 1000000}M` : `$${(n / 1000).toFixed(0)}k`);
+const fmtDate = (d) => d.toLocaleDateString("en-NZ", { day: "2-digit", month: "short", year: "numeric" });
+const daysBetween = (a, b) => Math.ceil((b - a) / (1000 * 60 * 60 * 24));
+const relTime = (d) => {
+  const mins = Math.floor((TODAY.getTime() - d.getTime()) / 60000);
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  const days = Math.floor(hrs / 24);
+  if (days < 30) return `${days}d ago`;
+  const months = Math.floor(days / 30);
+  if (months < 12) return `${months}mo ago`;
+  return `${Math.floor(months / 12)}y ago`;
+};
+const coverColor = (code) => (code === "PI" ? C.mint : code === "PL" ? C.lime : C.purple);
+
+/* --------- LOGO --------- */
+function Logo({ className = "h-9", inverted = false }) {
+  const fill = inverted ? "white" : C.ink;
+  const stroke = inverted ? "white" : C.ink;
+  const text = inverted ? C.ink : "white";
+  return (
+    <div className={`inline-flex items-center ${className}`}>
+      <svg viewBox="0 0 110 50" className="h-full w-auto" aria-label="JUSTN">
+        <rect x="42" y="2" width="22" height="6" rx="2" fill="none" stroke={stroke} strokeWidth="3" />
+        <path d="M6 10 H100 Q104 10 104 14 V36 Q104 40 100 40 H88 L82 48 L80 40 H10 Q6 40 6 36 Z" fill={fill} />
+        <text x="55" y="32" textAnchor="middle" fontFamily="Fraunces, serif" fontWeight="900" fontSize="20" fill={text} letterSpacing="1">
+          JUSTN
+        </text>
+      </svg>
+    </div>
+  );
+}
+
+/* --------- SHARED UI --------- */
+function PillButton({ children, onClick, variant = "primary", icon: Icon = ArrowRight, iconPosition = "right", disabled = false, className = "", type = "button" }) {
+  const variants = {
+    primary: { bg: C.ink, fg: "white", border: C.ink },
+    secondary: { bg: "white", fg: C.ink, border: C.ink },
+    ghost: { bg: "transparent", fg: C.ink, border: C.ink },
+  };
+  const v = variants[variant];
+  return (
+    <button
+      type={type}
+      onClick={onClick}
+      disabled={disabled}
+      className={`group inline-flex items-center justify-center gap-3 rounded-full px-6 py-4 font-semibold transition-all active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed ${className}`}
+      style={{ backgroundColor: v.bg, color: v.fg, border: `1.5px solid ${v.border}` }}
+    >
+      {Icon && iconPosition === "left" && <Icon size={18} strokeWidth={2.5} />}
+      <span>{children}</span>
+      {Icon && iconPosition === "right" && (
+        <span
+          className="flex h-7 w-7 items-center justify-center rounded-full transition-transform group-hover:translate-x-0.5"
+          style={{
+            backgroundColor: variant === "primary" ? "white" : C.ink,
+            color: variant === "primary" ? C.ink : "white",
+          }}
+        >
+          <Icon size={14} strokeWidth={3} />
+        </span>
+      )}
+    </button>
+  );
+}
+
+function StatusPill({ children, bg = C.mint, fg = C.ink }) {
+  return (
+    <span
+      className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[11px] font-black uppercase tracking-wider"
+      style={{ backgroundColor: bg, color: fg }}
+    >
+      {children}
+    </span>
+  );
+}
+
+function Field({ label, children, hint, required }) {
+  return (
+    <label className="block">
+      <div className="mb-2 flex items-baseline justify-between">
+        <span className="text-sm font-semibold" style={{ color: C.ink }}>
+          {label}
+          {required && <span style={{ color: C.orange }}> *</span>}
+        </span>
+        {hint && <span className="text-xs opacity-60" style={{ color: C.ink }}>{hint}</span>}
+      </div>
+      {children}
+    </label>
+  );
+}
+
+function TextInput({ value, onChange, placeholder, type = "text", readOnly, ...rest }) {
+  return (
+    <input
+      type={type}
+      value={value || ""}
+      onChange={(e) => onChange?.(e.target.value)}
+      placeholder={placeholder}
+      readOnly={readOnly}
+      className="w-full rounded-2xl border bg-white px-4 py-3.5 text-base font-medium outline-none transition-all focus:border-current"
+      style={{ borderColor: C.hairline, color: C.ink, opacity: readOnly ? 0.7 : 1 }}
+      {...rest}
+    />
+  );
+}
+
+function SelectInput({ value, onChange, options, placeholder = "Select…" }) {
+  return (
+    <div className="relative">
+      <select
+        value={value || ""}
+        onChange={(e) => onChange(e.target.value)}
+        className="w-full appearance-none rounded-2xl border bg-white px-4 py-3.5 pr-12 text-base font-medium outline-none focus:border-current"
+        style={{ borderColor: C.hairline, color: value ? C.ink : "#9aa5a3" }}
+      >
+        <option value="" disabled>{placeholder}</option>
+        {options.map((o) => (
+          <option key={o.value} value={o.value}>{o.label}</option>
+        ))}
+      </select>
+      <ChevronRight size={18} className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 rotate-90" style={{ color: C.ink, opacity: 0.5 }} />
+    </div>
+  );
+}
+
+function Eyebrow({ children, color }) {
+  return (
+    <p className="text-[11px] font-black uppercase tracking-[0.12em]" style={{ color: color || C.ink, opacity: color ? 1 : 0.55 }}>
+      {children}
+    </p>
+  );
+}
+
+function H1({ children, className = "" }) {
+  return (
+    <h1
+      className={`leading-[1.05] tracking-tight ${className}`}
+      style={{
+        fontFamily: "Fraunces, serif",
+        fontWeight: 900,
+        fontSize: "clamp(34px, 9vw, 48px)",
+        color: C.ink,
+        fontVariationSettings: "'SOFT' 100",
+      }}
+    >
+      {children}
+    </h1>
+  );
+}
+
+function H2({ children, className = "" }) {
+  return (
+    <h2
+      className={`leading-tight tracking-tight ${className}`}
+      style={{
+        fontFamily: "Fraunces, serif",
+        fontWeight: 800,
+        fontSize: "clamp(22px, 5vw, 28px)",
+        color: C.ink,
+        fontVariationSettings: "'SOFT' 100",
+      }}
+    >
+      {children}
+    </h2>
+  );
+}
+
+/* --------- LAYOUT --------- */
+function TopBar({ greeting, onNotifications, onSettings, transparent = false }) {
+  return (
+    <div
+      className="sticky top-0 z-30"
+      style={{ backgroundColor: transparent ? "transparent" : "rgba(255,255,255,0.9)", backdropFilter: "blur(10px)" }}
+    >
+      <div className="mx-auto flex max-w-md items-center justify-between px-5 py-4">
+        <Logo className="h-8" />
+        <div className="flex items-center gap-2">
+          <button
+            onClick={onNotifications}
+            className="relative flex h-10 w-10 items-center justify-center rounded-full"
+            style={{ backgroundColor: "white", border: `1.5px solid ${C.ink}` }}
+            aria-label="Notifications"
+          >
+            <Bell size={16} style={{ color: C.ink }} strokeWidth={2.5} />
+            <span className="absolute right-2 top-2 h-2 w-2 rounded-full ring-2 ring-white" style={{ backgroundColor: C.orange }} />
+          </button>
+          <button
+            onClick={onSettings}
+            className="flex h-10 w-10 items-center justify-center rounded-full font-black"
+            style={{ backgroundColor: C.lime, color: C.ink, border: `1.5px solid ${C.ink}` }}
+            aria-label="Account"
+          >
+            {CUSTOMER.initials}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function PageBar({ onBack, title, transparent }) {
+  return (
+    <div
+      className="sticky top-0 z-30"
+      style={{ backgroundColor: transparent ? "transparent" : "rgba(255,255,255,0.92)", backdropFilter: "blur(10px)" }}
+    >
+      <div className="mx-auto flex max-w-md items-center justify-between gap-3 px-5 py-4">
+        <button
+          onClick={onBack}
+          className="flex h-10 w-10 items-center justify-center rounded-full"
+          style={{ backgroundColor: "white", border: `1.5px solid ${C.ink}` }}
+          aria-label="Back"
+        >
+          <ArrowLeft size={18} style={{ color: C.ink }} strokeWidth={2.5} />
+        </button>
+        {title && (
+          <p className="flex-1 truncate text-center text-sm font-bold" style={{ color: C.ink }}>{title}</p>
+        )}
+        <div className="w-10" />
+      </div>
+    </div>
+  );
+}
+
+function StickyCTA({ children }) {
+  return (
+    <div
+      className="sticky bottom-0 z-20 mt-8 px-5 pb-6 pt-4"
+      style={{ background: "linear-gradient(to top, rgba(255,255,255,1) 60%, rgba(255,255,255,0))" }}
+    >
+      <div className="mx-auto max-w-md">{children}</div>
+    </div>
+  );
+}
+
+function BottomNav({ active, onChange, badges = {} }) {
+  const items = [
+    { id: "home", label: "Home", icon: Home },
+    { id: "policies", label: "Cover", icon: Shield },
+    { id: "docs", label: "Docs", icon: FileText },
+    { id: "profile", label: "Profile", icon: User },
+    { id: "help", label: "Help", icon: HelpCircle },
+  ];
+  return (
+    <nav
+      className="fixed bottom-0 left-0 right-0 z-30"
+      style={{ backgroundColor: "rgba(255,255,255,0.95)", backdropFilter: "blur(12px)", borderTop: `1px solid ${C.hairline}` }}
+    >
+      <div className="mx-auto flex max-w-md items-center justify-around px-2 py-2 pb-3">
+        {items.map((item) => {
+          const Icon = item.icon;
+          const isActive = active === item.id;
+          const badge = badges[item.id];
+          return (
+            <button
+              key={item.id}
+              onClick={() => onChange(item.id)}
+              className="relative flex flex-1 flex-col items-center gap-0.5 rounded-2xl px-2 py-2 transition-all"
+              style={{ color: isActive ? C.ink : "rgba(14,44,42,0.5)" }}
+            >
+              <div
+                className="relative flex h-9 w-12 items-center justify-center rounded-full transition-all"
+                style={{ backgroundColor: isActive ? C.mint : "transparent" }}
+              >
+                <Icon size={18} strokeWidth={isActive ? 2.5 : 2} />
+                {badge > 0 && (
+                  <span
+                    className="absolute -right-0.5 -top-0.5 flex h-4 w-4 items-center justify-center rounded-full text-[9px] font-black ring-2 ring-white"
+                    style={{ backgroundColor: C.orange, color: "white" }}
+                  >
+                    {badge}
+                  </span>
+                )}
+              </div>
+              <span className="text-[10px] font-bold">{item.label}</span>
+            </button>
+          );
+        })}
+      </div>
+    </nav>
+  );
+}
+
+/* =========================================================
+   SCREEN: LOGIN
+   ========================================================= */
+function Login({ onLogin }) {
+  const [email, setEmail] = useState("alex@pacificcode.co.nz");
+  const [password, setPassword] = useState("•••••••••");
+  const [magicSent, setMagicSent] = useState(false);
+  const [loading, setLoading] = useState(false);
+
+  const submit = () => {
+    setLoading(true);
+    setTimeout(onLogin, 900);
+  };
+
+  return (
+    <div className="min-h-screen" style={{ backgroundColor: C.mint }}>
+      <div className="mx-auto flex max-w-md flex-col px-5 pt-8 pb-12">
+        <Logo className="h-9" />
+
+        <div className="mt-12">
+          <Eyebrow>Welcome back</Eyebrow>
+          <H1 className="mt-2">Sign in to manage your cover</H1>
+          <p className="mt-4 text-base font-medium" style={{ color: C.ink, opacity: 0.8 }}>
+            Quick check-in or full self-service. Whatever you need, it's here.
+          </p>
+        </div>
+
+        <div className="mt-8 rounded-3xl bg-white p-5 space-y-4">
+          <Field label="Email" required>
+            <TextInput type="email" value={email} onChange={setEmail} placeholder="you@example.co.nz" />
+          </Field>
+          <Field label="Password">
+            <TextInput type="password" value={password} onChange={setPassword} />
+          </Field>
+          <PillButton
+            onClick={submit}
+            disabled={loading}
+            className="w-full"
+            icon={loading ? Loader2 : ArrowRight}
+          >
+            {loading ? "Signing in…" : "Sign in"}
+          </PillButton>
+          <div className="flex items-center gap-3">
+            <div className="flex-1 h-px" style={{ backgroundColor: C.hairline }} />
+            <span className="text-xs font-bold" style={{ color: C.ink, opacity: 0.5 }}>OR</span>
+            <div className="flex-1 h-px" style={{ backgroundColor: C.hairline }} />
+          </div>
+          <button
+            onClick={() => setMagicSent(true)}
+            className="flex w-full items-center justify-center gap-2 rounded-full px-5 py-3 text-sm font-bold"
+            style={{ color: C.ink, backgroundColor: C.lime }}
+          >
+            <Mail size={16} /> Email me a magic link
+          </button>
+          {magicSent && (
+            <p className="text-center text-xs" style={{ color: C.ink, opacity: 0.7 }}>
+              Magic link sent to {email} (demo)
+            </p>
+          )}
+        </div>
+
+        <div className="mt-6 text-center">
+          <p className="text-sm" style={{ color: C.ink, opacity: 0.7 }}>
+            First time here?{" "}
+            <button className="font-bold underline" style={{ color: C.ink }}>Activate your account</button>
+          </p>
+        </div>
+
+        <div className="mt-auto pt-12 text-center">
+          <p className="text-xs" style={{ color: C.ink, opacity: 0.6 }}>
+            Trouble signing in? Email{" "}
+            <span className="font-bold underline">hello@justn.co.nz</span>
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* =========================================================
+   SCREEN: HOME
+   ========================================================= */
+function HomeScreen({ onNavigate, onAcceptRenewal, onPolicyDetail, onClaimStart, onSupportStart, onShowNotifications, onShowSettings }) {
+  const daysToExpiry = daysBetween(TODAY, ACTIVE_POLICY.expiry);
+  const renewalAvailable = !!RENEWAL;
+
+  return (
+    <div className="min-h-screen pb-24" style={{ backgroundColor: C.cream }}>
+      <TopBar onNotifications={onShowNotifications} onSettings={onShowSettings} />
+      <div className="mx-auto max-w-md px-5 pb-8">
+        <div className="mt-2">
+          <Eyebrow>Kia ora</Eyebrow>
+          <H1 className="mt-1">{CUSTOMER.firstName}</H1>
+        </div>
+
+        {/* Renewal banner */}
+        {renewalAvailable && (
+          <button
+            onClick={onAcceptRenewal}
+            className="mt-6 flex w-full items-center justify-between gap-3 rounded-3xl p-4 text-left transition-all active:scale-[0.99]"
+            style={{ backgroundColor: C.lime }}
+          >
+            <div className="flex items-center gap-3 min-w-0">
+              <div
+                className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl"
+                style={{ backgroundColor: C.ink }}
+              >
+                <Sparkles size={20} className="text-white" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-sm font-black" style={{ color: C.ink }}>Your renewal is ready</p>
+                <p className="text-xs" style={{ color: C.ink, opacity: 0.75 }}>
+                  Renew in 60 seconds · {fmt(RENEWAL.newPremium)}/yr
+                </p>
+              </div>
+            </div>
+            <ChevronRight size={20} style={{ color: C.ink }} />
+          </button>
+        )}
+
+        {/* Cover hero */}
+        <button
+          onClick={() => onPolicyDetail(ACTIVE_POLICY.id)}
+          className="mt-4 block w-full rounded-3xl p-6 text-left transition-all active:scale-[0.99]"
+          style={{ backgroundColor: C.mint }}
+        >
+          <div className="flex items-center justify-between">
+            <Eyebrow>Your active cover</Eyebrow>
+            <StatusPill bg={C.ink} fg="white">
+              <CheckCircle2 size={11} strokeWidth={3} /> Active
+            </StatusPill>
+          </div>
+          <p
+            className="mt-3 leading-tight"
+            style={{ fontFamily: "Fraunces, serif", fontWeight: 900, fontSize: "32px", color: C.ink, fontVariationSettings: "'SOFT' 100" }}
+          >
+            PI · PL · Statutory
+          </p>
+          <p className="mt-1 text-sm font-bold" style={{ color: C.ink, opacity: 0.7 }}>{ACTIVE_POLICY.id}</p>
+
+          <div className="mt-5 flex items-center gap-3">
+            {ACTIVE_POLICY.covers.map((c) => (
+              <div
+                key={c.code}
+                className="flex flex-col rounded-2xl p-3 flex-1"
+                style={{ backgroundColor: "rgba(255,255,255,0.65)" }}
+              >
+                <p className="text-[10px] font-black uppercase tracking-wider" style={{ color: C.ink, opacity: 0.65 }}>{c.code}</p>
+                <p className="text-base font-black tabular-nums" style={{ color: C.ink, fontFamily: "Fraunces, serif" }}>
+                  {fmtLimit(c.limit)}
+                </p>
+              </div>
+            ))}
+          </div>
+
+          <div className="mt-5 flex items-center justify-between border-t pt-4" style={{ borderColor: "rgba(14,44,42,0.15)" }}>
+            <div className="flex items-center gap-2">
+              <Clock size={14} style={{ color: C.ink }} />
+              <p className="text-xs font-bold" style={{ color: C.ink }}>
+                Renews in {daysToExpiry} days · {fmtDate(ACTIVE_POLICY.expiry)}
+              </p>
+            </div>
+            <ChevronRight size={16} style={{ color: C.ink }} />
+          </div>
+        </button>
+
+        {/* Quick actions */}
+        <div className="mt-6">
+          <Eyebrow>Quick actions</Eyebrow>
+          <div className="mt-3 grid grid-cols-2 gap-3">
+            <ActionCard
+              icon={Download}
+              label="Certificate of currency"
+              sub="Send to a client"
+              color={C.purple}
+              onClick={() => onNavigate("docs")}
+            />
+            <ActionCard
+              icon={Edit3}
+              label="Request a change"
+              sub="Update your cover"
+              color={C.lime}
+              onClick={() => onNavigate("profile")}
+            />
+            <ActionCard
+              icon={AlertTriangle}
+              label="File a claim"
+              sub="Notify us of an event"
+              color={C.orangeSoft}
+              onClick={onClaimStart}
+            />
+            <ActionCard
+              icon={MessageSquare}
+              label="Get help"
+              sub="We're here for you"
+              color={C.mintSoft}
+              onClick={onSupportStart}
+            />
+          </div>
+        </div>
+
+        {/* Activity */}
+        <div className="mt-8">
+          <div className="flex items-center justify-between">
+            <Eyebrow>Recent activity</Eyebrow>
+          </div>
+          <div className="mt-3 space-y-3">
+            {ACTIVITY.slice(0, 4).map((a, i) => {
+              const Icon = a.type === "renewal" ? Sparkles : a.type === "doc" ? FileText : a.type === "payment" ? Receipt : Shield;
+              const iconBg = a.type === "renewal" ? C.lime : a.type === "doc" ? C.mintSoft : a.type === "payment" ? C.purple : C.mintSoft;
+              return (
+                <div key={i} className="flex items-start gap-3 rounded-2xl bg-white p-3" style={{ border: `1px solid ${C.hairline2}` }}>
+                  <div
+                    className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full"
+                    style={{ backgroundColor: iconBg }}
+                  >
+                    <Icon size={16} style={{ color: C.ink }} />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium leading-tight" style={{ color: C.ink }}>{a.message}</p>
+                    <p className="mt-0.5 text-[10px] font-bold uppercase tracking-wider" style={{ color: C.ink, opacity: 0.5 }}>
+                      {relTime(a.at)}
+                    </p>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ActionCard({ icon: Icon, label, sub, color, onClick }) {
+  return (
+    <button
+      onClick={onClick}
+      className="flex flex-col items-start rounded-2xl p-4 text-left transition-all active:scale-[0.97]"
+      style={{ backgroundColor: color }}
+    >
+      <div
+        className="flex h-9 w-9 items-center justify-center rounded-full"
+        style={{ backgroundColor: C.ink }}
+      >
+        <Icon size={16} className="text-white" strokeWidth={2.3} />
+      </div>
+      <p className="mt-3 text-sm font-bold leading-tight" style={{ color: C.ink }}>{label}</p>
+      <p className="text-[11px]" style={{ color: C.ink, opacity: 0.7 }}>{sub}</p>
+    </button>
+  );
+}
+
+/* =========================================================
+   SCREEN: POLICIES LIST
+   ========================================================= */
+function PoliciesScreen({ onPolicyDetail, onShowNotifications, onShowSettings }) {
+  return (
+    <div className="min-h-screen pb-24" style={{ backgroundColor: C.cream }}>
+      <TopBar onNotifications={onShowNotifications} onSettings={onShowSettings} />
+      <div className="mx-auto max-w-md px-5">
+        <Eyebrow>Your cover</Eyebrow>
+        <H1 className="mt-1">Policies</H1>
+
+        {/* Active */}
+        <div className="mt-6">
+          <Eyebrow>Active now</Eyebrow>
+          <button
+            onClick={() => onPolicyDetail(ACTIVE_POLICY.id)}
+            className="mt-3 block w-full rounded-3xl p-5 text-left transition-all active:scale-[0.99]"
+            style={{ backgroundColor: C.mint }}
+          >
+            <div className="flex items-center justify-between">
+              <p className="text-xs font-bold tabular-nums" style={{ color: C.ink, opacity: 0.7 }}>{ACTIVE_POLICY.id}</p>
+              <StatusPill bg={C.ink} fg="white">
+                <CheckCircle2 size={11} strokeWidth={3} /> Active
+              </StatusPill>
+            </div>
+            <p
+              className="mt-2 leading-tight"
+              style={{ fontFamily: "Fraunces, serif", fontWeight: 900, fontSize: "26px", color: C.ink, fontVariationSettings: "'SOFT' 100" }}
+            >
+              PI + PL + Statutory bundle
+            </p>
+            <div className="mt-4 flex flex-wrap items-center gap-2">
+              {ACTIVE_POLICY.covers.map((c) => (
+                <span
+                  key={c.code}
+                  className="inline-flex items-center gap-1 rounded-full bg-white/70 px-2.5 py-1 text-[11px] font-black"
+                  style={{ color: C.ink }}
+                >
+                  {c.code} {fmtLimit(c.limit)}
+                </span>
+              ))}
+            </div>
+            <div className="mt-4 flex items-center justify-between border-t pt-4" style={{ borderColor: "rgba(14,44,42,0.15)" }}>
+              <p className="text-xs font-bold" style={{ color: C.ink }}>
+                {fmtDate(ACTIVE_POLICY.inception)} – {fmtDate(ACTIVE_POLICY.expiry)}
+              </p>
+              <p className="text-sm font-black tabular-nums" style={{ color: C.ink }}>
+                {fmt(ACTIVE_POLICY.total)}/yr
+              </p>
+            </div>
+          </button>
+        </div>
+
+        {/* Past */}
+        <div className="mt-8">
+          <Eyebrow>Past cover</Eyebrow>
+          <div className="mt-3 space-y-3">
+            {HISTORICAL_POLICIES.map((p) => (
+              <button
+                key={p.id}
+                onClick={() => onPolicyDetail(p.id)}
+                className="block w-full rounded-2xl bg-white p-4 text-left transition-all active:scale-[0.99]"
+                style={{ border: `1px solid ${C.hairline2}` }}
+              >
+                <div className="flex items-center justify-between">
+                  <p className="text-xs font-bold tabular-nums" style={{ color: C.ink, opacity: 0.7 }}>{p.id}</p>
+                  <StatusPill bg="#E5E7EB" fg={C.ink3}>{p.status}</StatusPill>
+                </div>
+                <p className="mt-2 text-base font-bold" style={{ color: C.ink }}>
+                  PI + PL + Statutory · Term {p.term}
+                </p>
+                <div className="mt-2 flex items-center justify-between">
+                  <p className="text-xs" style={{ color: C.ink, opacity: 0.6 }}>
+                    {fmtDate(p.inception)} – {fmtDate(p.expiry)}
+                  </p>
+                  <p className="text-sm font-bold tabular-nums" style={{ color: C.ink, opacity: 0.7 }}>{fmt(p.total)}</p>
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* =========================================================
+   SCREEN: POLICY DETAIL
+   ========================================================= */
+function PolicyDetailScreen({ policyId, onBack, onDocs, onRequestChange }) {
+  const policy = policyId === ACTIVE_POLICY.id ? ACTIVE_POLICY : HISTORICAL_POLICIES.find((p) => p.id === policyId);
+  if (!policy) return null;
+  const isActive = policy.status === "Active";
+  const docs = DOCUMENTS.filter((d) => d.policyId === policyId);
+
+  return (
+    <div className="min-h-screen pb-24" style={{ backgroundColor: C.cream }}>
+      <PageBar onBack={onBack} title={policy.id} />
+      <div className="mx-auto max-w-md px-5 pb-8">
+        <div className="-mx-5 -mt-2 px-5 pb-8 pt-2" style={{ backgroundColor: isActive ? C.mint : "#E5E7EB" }}>
+          <StatusPill bg={isActive ? C.ink : C.ink3} fg="white">
+            {isActive ? <><CheckCircle2 size={11} strokeWidth={3} /> Active</> : policy.status}
+          </StatusPill>
+          <H1 className="mt-3">PI · PL · Statutory</H1>
+          <p className="mt-2 text-sm font-bold" style={{ color: C.ink, opacity: 0.75 }}>
+            Term {policy.term} · {fmtDate(policy.inception)} – {fmtDate(policy.expiry)}
+          </p>
+        </div>
+
+        {/* Covers */}
+        <div className="mt-6 space-y-4">
+          <Eyebrow>What's covered</Eyebrow>
+          {policy.covers.map((c) => (
+            <div key={c.code} className="rounded-3xl p-5" style={{ backgroundColor: coverColor(c.code) }}>
+              <div className="flex items-center justify-between">
+                <p
+                  className="leading-tight"
+                  style={{ fontFamily: "Fraunces, serif", fontWeight: 800, fontSize: "20px", color: C.ink, fontVariationSettings: "'SOFT' 100" }}
+                >
+                  {c.name}
+                </p>
+                <span
+                  className="inline-flex items-center justify-center rounded-md px-2 py-1 text-[10px] font-black"
+                  style={{ backgroundColor: C.ink, color: "white" }}
+                >
+                  {c.code}
+                </span>
+              </div>
+              <div className="mt-3 grid grid-cols-2 gap-3">
+                <div className="rounded-xl bg-white/70 p-3">
+                  <p className="text-[10px] font-black uppercase tracking-wider" style={{ color: C.ink, opacity: 0.6 }}>Cover limit</p>
+                  <p className="mt-0.5 text-lg font-black tabular-nums" style={{ color: C.ink, fontFamily: "Fraunces, serif" }}>
+                    {fmtLimit(c.limit)}
+                  </p>
+                </div>
+                <div className="rounded-xl bg-white/70 p-3">
+                  <p className="text-[10px] font-black uppercase tracking-wider" style={{ color: C.ink, opacity: 0.6 }}>Excess</p>
+                  <p className="mt-0.5 text-lg font-black tabular-nums" style={{ color: C.ink, fontFamily: "Fraunces, serif" }}>
+                    {fmt(c.excess)}
+                  </p>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Premium breakdown */}
+        <div className="mt-6 rounded-3xl bg-white p-5" style={{ border: `1px solid ${C.hairline2}` }}>
+          <Eyebrow>Premium breakdown</Eyebrow>
+          <div className="mt-4 space-y-2 text-sm">
+            {policy.covers.map((c) => (
+              <div key={c.code} className="flex items-center justify-between">
+                <span style={{ color: C.ink, opacity: 0.75 }}>{c.name}</span>
+                <span className="tabular-nums font-semibold" style={{ color: C.ink }}>{fmt(c.premium)}</span>
+              </div>
+            ))}
+            <div className="my-2 h-px" style={{ backgroundColor: C.hairline2 }} />
+            <Row label="Subtotal" value={fmt(policy.subtotal)} />
+            <Row label="Bundle discount (10%)" value={`-${fmt(policy.bundleDiscount)}`} accent={C.mintDeep} />
+            <Row label="Admin fee" value={fmt(policy.adminFee)} />
+            <Row label="Regulatory levy" value={fmt(policy.levy)} />
+            <Row label="GST (15%)" value={fmt(policy.gst)} />
+            <div className="my-2 h-px" style={{ backgroundColor: C.hairline }} />
+            <Row label="Total" value={fmt(policy.total)} bold />
+          </div>
+        </div>
+
+        {/* Documents */}
+        <div className="mt-6">
+          <div className="flex items-center justify-between">
+            <Eyebrow>Documents</Eyebrow>
+            <button onClick={onDocs} className="text-xs font-bold underline underline-offset-4" style={{ color: C.ink }}>
+              See all
+            </button>
+          </div>
+          <div className="mt-3 space-y-2">
+            {docs.map((d) => (
+              <DocRow key={d.id} doc={d} />
+            ))}
+          </div>
+        </div>
+
+        {isActive && (
+          <div className="mt-6 rounded-3xl p-5" style={{ backgroundColor: C.lime }}>
+            <p className="text-sm font-black" style={{ color: C.ink }}>Need to update your cover?</p>
+            <p className="mt-1 text-xs" style={{ color: C.ink, opacity: 0.8 }}>
+              Things change. Add a cover, increase a limit, or update your business details.
+            </p>
+            <button
+              onClick={onRequestChange}
+              className="mt-3 inline-flex items-center gap-2 rounded-full bg-white px-4 py-2 text-xs font-bold"
+              style={{ color: C.ink }}
+            >
+              Request a change <ArrowRight size={14} />
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function Row({ label, value, bold, accent }) {
+  return (
+    <div className="flex items-center justify-between">
+      <span style={{ color: C.ink, opacity: bold ? 1 : 0.75, fontWeight: bold ? 700 : 500 }}>{label}</span>
+      <span
+        className="tabular-nums"
+        style={{ color: accent || C.ink, fontWeight: bold ? 800 : 600, fontSize: bold ? "1.125rem" : undefined }}
+      >
+        {value}
+      </span>
+    </div>
+  );
+}
+
+function DocRow({ doc, onDownload }) {
+  const Icon = doc.type === "Schedule" ? ScrollText : doc.type === "Certificate" ? ShieldCheck : doc.type === "Invoice" ? Receipt : FileText;
+  const color = doc.type === "Schedule" ? C.mintSoft : doc.type === "Certificate" ? C.lime : doc.type === "Invoice" ? C.purple : C.orangeSoft;
+  return (
+    <button
+      onClick={onDownload}
+      className="flex w-full items-center gap-3 rounded-2xl bg-white p-3 text-left transition-all active:scale-[0.99]"
+      style={{ border: `1px solid ${C.hairline2}` }}
+    >
+      <div
+        className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl"
+        style={{ backgroundColor: color }}
+      >
+        <Icon size={16} style={{ color: C.ink }} />
+      </div>
+      <div className="min-w-0 flex-1">
+        <p className="text-sm font-bold leading-tight" style={{ color: C.ink }}>{doc.name}</p>
+        <p className="text-xs" style={{ color: C.ink, opacity: 0.55 }}>{doc.size} · Issued {fmtDate(doc.issuedAt)}</p>
+      </div>
+      <Download size={16} style={{ color: C.ink, opacity: 0.6 }} />
+    </button>
+  );
+}
+
+/* =========================================================
+   SCREEN: DOCS
+   ========================================================= */
+function DocsScreen({ onShowNotifications, onShowSettings, onDownload }) {
+  const [filter, setFilter] = useState("all");
+  const filtered = useMemo(() => {
+    if (filter === "all") return DOCUMENTS;
+    if (filter === "current") return DOCUMENTS.filter((d) => d.policyId === ACTIVE_POLICY.id);
+    return DOCUMENTS.filter((d) => d.type === filter);
+  }, [filter]);
+
+  const groups = useMemo(() => {
+    const out = {};
+    filtered.forEach((d) => {
+      const key = d.policyId === ACTIVE_POLICY.id ? `${ACTIVE_POLICY.id} · Current term` : `${d.policyId} · Past term`;
+      out[key] = out[key] || [];
+      out[key].push(d);
+    });
+    return out;
+  }, [filtered]);
+
+  return (
+    <div className="min-h-screen pb-24" style={{ backgroundColor: C.cream }}>
+      <TopBar onNotifications={onShowNotifications} onSettings={onShowSettings} />
+      <div className="mx-auto max-w-md px-5">
+        <Eyebrow>{filtered.length} files</Eyebrow>
+        <H1 className="mt-1">Documents</H1>
+        <p className="mt-2 text-sm" style={{ color: C.ink, opacity: 0.7 }}>
+          Everything for your records — and to send to clients when they ask for proof.
+        </p>
+
+        {/* Filter chips */}
+        <div className="mt-5 flex flex-wrap gap-2">
+          {[
+            { id: "all", label: "All" },
+            { id: "current", label: "Current term" },
+            { id: "Schedule", label: "Schedules" },
+            { id: "Certificate", label: "Certificates" },
+            { id: "Invoice", label: "Invoices" },
+            { id: "Wording", label: "Wordings" },
+          ].map((f) => {
+            const active = filter === f.id;
+            return (
+              <button
+                key={f.id}
+                onClick={() => setFilter(f.id)}
+                className="rounded-full px-3.5 py-1.5 text-xs font-bold transition-all"
+                style={{
+                  backgroundColor: active ? C.ink : "white",
+                  color: active ? "white" : C.ink,
+                  border: `1px solid ${active ? C.ink : C.hairline}`,
+                }}
+              >
+                {f.label}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Groups */}
+        <div className="mt-6 space-y-6">
+          {Object.entries(groups).map(([title, docs]) => (
+            <div key={title}>
+              <p className="text-xs font-bold mb-2" style={{ color: C.ink, opacity: 0.6 }}>{title}</p>
+              <div className="space-y-2">
+                {docs.map((d) => (
+                  <DocRow key={d.id} doc={d} onDownload={() => onDownload(d.name)} />
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* =========================================================
+   SCREEN: PROFILE
+   ========================================================= */
+function ProfileScreen({ customer, setCustomer, onShowNotifications, onShowSettings, onSave, onRequestEndorsement, onLogout }) {
+  const [draft, setDraft] = useState(customer);
+  const [edited, setEdited] = useState(false);
+  const update = (k, v) => { setDraft({ ...draft, [k]: v }); setEdited(true); };
+
+  return (
+    <div className="min-h-screen pb-24" style={{ backgroundColor: C.cream }}>
+      <TopBar onNotifications={onShowNotifications} onSettings={onShowSettings} />
+      <div className="mx-auto max-w-md px-5">
+        <Eyebrow>Account & business</Eyebrow>
+        <H1 className="mt-1">Profile</H1>
+
+        {/* Avatar + member since */}
+        <div className="mt-6 flex items-center gap-4 rounded-3xl bg-white p-5" style={{ border: `1px solid ${C.hairline2}` }}>
+          <div
+            className="flex h-14 w-14 items-center justify-center rounded-full text-lg font-black"
+            style={{ backgroundColor: C.lime, color: C.ink }}
+          >
+            {CUSTOMER.initials}
+          </div>
+          <div>
+            <p className="text-base font-black" style={{ color: C.ink }}>{customer.fullName}</p>
+            <p className="text-xs" style={{ color: C.ink, opacity: 0.6 }}>
+              JUSTN customer since {fmtDate(CUSTOMER.joinedAt)}
+            </p>
+          </div>
+        </div>
+
+        {/* Personal */}
+        <div className="mt-6">
+          <Eyebrow>Contact details</Eyebrow>
+          <p className="mt-1 text-xs" style={{ color: C.ink, opacity: 0.6 }}>
+            You can update these any time. Changes are saved immediately.
+          </p>
+          <div className="mt-4 space-y-4">
+            <Field label="Email">
+              <TextInput type="email" value={draft.email} onChange={(v) => update("email", v)} />
+            </Field>
+            <Field label="Mobile">
+              <TextInput type="tel" value={draft.mobile} onChange={(v) => update("mobile", v)} />
+            </Field>
+            <Field label="Postal address">
+              <TextInput value={draft.address} onChange={(v) => update("address", v)} />
+            </Field>
+          </div>
+        </div>
+
+        {/* Business — read-only with request change */}
+        <div className="mt-8">
+          <div className="flex items-center justify-between">
+            <Eyebrow>Business details</Eyebrow>
+            <span className="rounded-full px-2 py-0.5 text-[10px] font-black uppercase tracking-wider" style={{ backgroundColor: C.purpleSoft, color: C.ink }}>
+              Needs review
+            </span>
+          </div>
+          <p className="mt-1 text-xs" style={{ color: C.ink, opacity: 0.6 }}>
+            Changes here can affect your premium, so we'll review before applying.
+          </p>
+          <div className="mt-4 space-y-3">
+            {[
+              { key: "company", label: "Legal entity name", value: customer.company, icon: Building2 },
+              { key: "tradingName", label: "Trading name", value: customer.tradingName, icon: Briefcase },
+              { key: "nzbn", label: "NZBN", value: customer.nzbn, icon: Hash },
+              { key: "entityType", label: "Entity type", value: customer.entityType, icon: ScrollText },
+            ].map((row) => {
+              const Icon = row.icon;
+              return (
+                <button
+                  key={row.key}
+                  onClick={() => onRequestEndorsement(row.key, row.label, row.value)}
+                  className="flex w-full items-center gap-3 rounded-2xl bg-white p-4 text-left transition-all active:scale-[0.99]"
+                  style={{ border: `1px solid ${C.hairline2}` }}
+                >
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full" style={{ backgroundColor: C.bg }}>
+                    <Icon size={14} style={{ color: C.ink }} />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[10px] font-bold uppercase tracking-wider" style={{ color: C.ink, opacity: 0.55 }}>{row.label}</p>
+                    <p className="truncate text-sm font-bold" style={{ color: C.ink }}>{row.value}</p>
+                  </div>
+                  <Edit3 size={14} style={{ color: C.ink, opacity: 0.4 }} />
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Notifications */}
+        <div className="mt-8">
+          <Eyebrow>Notifications</Eyebrow>
+          <div className="mt-4 space-y-3 rounded-2xl bg-white p-4" style={{ border: `1px solid ${C.hairline2}` }}>
+            {[
+              { label: "Renewal reminders", desc: "60, 30, and 7 days before expiry", on: true },
+              { label: "Policy documents", desc: "Email me when a new doc is issued", on: true },
+              { label: "Newsletter", desc: "Tips for NZ contractors, monthly", on: false },
+            ].map((n, i) => (
+              <ToggleRow key={i} {...n} />
+            ))}
+          </div>
+        </div>
+
+        <button
+          onClick={onLogout}
+          className="mt-8 inline-flex items-center gap-2 text-sm font-bold underline underline-offset-4"
+          style={{ color: C.ink, opacity: 0.7 }}
+        >
+          <LogOut size={14} /> Sign out
+        </button>
+      </div>
+
+      {edited && (
+        <StickyCTA>
+          <PillButton
+            onClick={() => { setCustomer(draft); setEdited(false); onSave(); }}
+            className="w-full"
+            icon={Check}
+          >
+            Save changes
+          </PillButton>
+        </StickyCTA>
+      )}
+    </div>
+  );
+}
+
+function ToggleRow({ label, desc, on }) {
+  const [val, setVal] = useState(on);
+  return (
+    <div className="flex items-center justify-between gap-3">
+      <div>
+        <p className="text-sm font-bold" style={{ color: C.ink }}>{label}</p>
+        <p className="text-[11px]" style={{ color: C.ink, opacity: 0.6 }}>{desc}</p>
+      </div>
+      <button
+        onClick={() => setVal(!val)}
+        className="relative h-7 w-12 shrink-0 rounded-full transition-colors"
+        style={{ backgroundColor: val ? C.ink : "#d6dedb" }}
+        aria-pressed={val}
+      >
+        <span
+          className="absolute top-0.5 h-6 w-6 rounded-full bg-white shadow transition-transform"
+          style={{ transform: val ? "translateX(22px)" : "translateX(2px)" }}
+        />
+      </button>
+    </div>
+  );
+}
+
+/* =========================================================
+   SCREEN: HELP
+   ========================================================= */
+function HelpScreen({ onShowNotifications, onShowSettings, onClaimStart, onSupportStart, tickets }) {
+  return (
+    <div className="min-h-screen pb-24" style={{ backgroundColor: C.cream }}>
+      <TopBar onNotifications={onShowNotifications} onSettings={onShowSettings} />
+      <div className="mx-auto max-w-md px-5">
+        <Eyebrow>We've got you</Eyebrow>
+        <H1 className="mt-1">Help & claims</H1>
+
+        {/* Two big options */}
+        <div className="mt-6 space-y-4">
+          <button
+            onClick={onClaimStart}
+            className="block w-full rounded-3xl p-5 text-left transition-all active:scale-[0.99]"
+            style={{ backgroundColor: C.orange }}
+          >
+            <div className="flex items-center justify-between">
+              <div>
+                <Eyebrow color={C.ink}>Got a claim?</Eyebrow>
+                <p
+                  className="mt-2 leading-tight text-white"
+                  style={{ fontFamily: "Fraunces, serif", fontWeight: 800, fontSize: "24px", fontVariationSettings: "'SOFT' 100" }}
+                >
+                  File a claim notification
+                </p>
+                <p className="mt-2 text-sm font-medium text-white/90">
+                  Tell us what happened. We'll reach out within 1 business day.
+                </p>
+              </div>
+              <div
+                className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl"
+                style={{ backgroundColor: "white" }}
+              >
+                <AlertTriangle size={20} style={{ color: C.ink }} />
+              </div>
+            </div>
+          </button>
+
+          <button
+            onClick={onSupportStart}
+            className="block w-full rounded-3xl p-5 text-left transition-all active:scale-[0.99]"
+            style={{ backgroundColor: C.lime }}
+          >
+            <div className="flex items-center justify-between">
+              <div>
+                <Eyebrow color={C.ink}>Question or request</Eyebrow>
+                <p
+                  className="mt-2 leading-tight"
+                  style={{ fontFamily: "Fraunces, serif", fontWeight: 800, fontSize: "24px", color: C.ink, fontVariationSettings: "'SOFT' 100" }}
+                >
+                  Send us a message
+                </p>
+                <p className="mt-2 text-sm font-medium" style={{ color: C.ink, opacity: 0.85 }}>
+                  We aim to respond within a few hours during business days.
+                </p>
+              </div>
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-white">
+                <MessageSquare size={20} style={{ color: C.ink }} />
+              </div>
+            </div>
+          </button>
+        </div>
+
+        {/* Direct contact */}
+        <div className="mt-8 rounded-3xl bg-white p-5" style={{ border: `1px solid ${C.hairline2}` }}>
+          <Eyebrow>Talk to a real person</Eyebrow>
+          <div className="mt-4 grid grid-cols-2 gap-3">
+            <a className="flex items-center gap-2 rounded-2xl p-3" style={{ backgroundColor: C.bg }}>
+              <Phone size={16} style={{ color: C.ink }} />
+              <div>
+                <p className="text-[10px] font-bold uppercase tracking-wider" style={{ color: C.ink, opacity: 0.6 }}>Call</p>
+                <p className="text-xs font-bold" style={{ color: C.ink }}>0800 JUSTN</p>
+              </div>
+            </a>
+            <a className="flex items-center gap-2 rounded-2xl p-3" style={{ backgroundColor: C.bg }}>
+              <Mail size={16} style={{ color: C.ink }} />
+              <div>
+                <p className="text-[10px] font-bold uppercase tracking-wider" style={{ color: C.ink, opacity: 0.6 }}>Email</p>
+                <p className="text-xs font-bold" style={{ color: C.ink }}>hello@justn.co.nz</p>
+              </div>
+            </a>
+          </div>
+        </div>
+
+        {/* Tickets */}
+        {tickets.length > 0 && (
+          <div className="mt-8">
+            <Eyebrow>Your requests</Eyebrow>
+            <div className="mt-3 space-y-3">
+              {tickets.map((t) => (
+                <div key={t.id} className="rounded-2xl bg-white p-4" style={{ border: `1px solid ${C.hairline2}` }}>
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs font-bold tabular-nums" style={{ color: C.ink, opacity: 0.7 }}>{t.id}</p>
+                    <StatusPill bg={C.lime} fg={C.ink}>{t.status}</StatusPill>
+                  </div>
+                  <p className="mt-1 text-sm font-bold" style={{ color: C.ink }}>{t.subject}</p>
+                  <p className="mt-1 text-xs" style={{ color: C.ink, opacity: 0.6 }}>
+                    {t.kind} · Submitted {relTime(t.createdAt)}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* FAQ */}
+        <div className="mt-8 mb-4">
+          <Eyebrow>Quick answers</Eyebrow>
+          <div className="mt-3 space-y-2">
+            {[
+              "How do I send my certificate of currency to a client?",
+              "What's covered under Professional Indemnity?",
+              "Can I increase my cover mid-policy?",
+              "When will my renewal arrive?",
+            ].map((q, i) => (
+              <button
+                key={i}
+                className="flex w-full items-center justify-between rounded-2xl bg-white p-4 text-left"
+                style={{ border: `1px solid ${C.hairline2}` }}
+              >
+                <p className="text-sm font-medium" style={{ color: C.ink }}>{q}</p>
+                <ChevronRight size={14} style={{ color: C.ink, opacity: 0.4 }} />
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* =========================================================
+   FLOW: RENEWAL
+   ========================================================= */
+function RenewalReview({ onAccept, onClose }) {
+  const delta = RENEWAL.newPremium - RENEWAL.priorPremium;
+  const pct = ((delta / RENEWAL.priorPremium) * 100).toFixed(1);
+
+  return (
+    <div className="min-h-screen pb-32" style={{ backgroundColor: C.cream }}>
+      <PageBar onBack={onClose} title="Renewal" />
+      <div className="mx-auto max-w-md px-5">
+        <div className="-mx-5 -mt-2 px-5 pb-8 pt-2" style={{ backgroundColor: C.lime }}>
+          <Eyebrow>Renew now in 60 seconds</Eyebrow>
+          <H1 className="mt-2">Your cover for 2026/27</H1>
+          <p className="mt-3 text-base font-medium" style={{ color: C.ink }}>
+            Same great cover, continuing seamlessly from {fmtDate(RENEWAL.effective)}.
+          </p>
+        </div>
+
+        {/* Premium comparison */}
+        <div className="mt-6 rounded-3xl bg-white p-5" style={{ border: `1px solid ${C.hairline2}` }}>
+          <Eyebrow>What you'll pay</Eyebrow>
+          <div className="mt-4 flex items-end gap-6">
+            <div>
+              <p className="text-xs font-bold uppercase tracking-wider" style={{ color: C.ink, opacity: 0.5 }}>Last year</p>
+              <p
+                className="line-through tabular-nums"
+                style={{ color: C.ink, opacity: 0.5, fontFamily: "Fraunces, serif", fontSize: "22px", fontWeight: 700 }}
+              >
+                {fmt(RENEWAL.priorPremium)}
+              </p>
+            </div>
+            <ArrowRight size={18} style={{ color: C.ink, opacity: 0.4 }} />
+            <div>
+              <p className="text-xs font-bold uppercase tracking-wider" style={{ color: C.ink, opacity: 0.5 }}>This year</p>
+              <p
+                className="tabular-nums"
+                style={{ color: C.ink, fontFamily: "Fraunces, serif", fontSize: "36px", fontWeight: 900, fontVariationSettings: "'SOFT' 100" }}
+              >
+                {fmt(RENEWAL.newPremium)}
+              </p>
+            </div>
+          </div>
+          <div className="mt-3 inline-flex items-center gap-2 rounded-full px-3 py-1" style={{ backgroundColor: C.orangeSoft }}>
+            <p className="text-xs font-bold" style={{ color: C.ink }}>
+              +{fmt(delta)} (+{pct}%)
+            </p>
+          </div>
+          <p className="mt-3 text-sm" style={{ color: C.ink, opacity: 0.75 }}>
+            {RENEWAL.message}
+          </p>
+        </div>
+
+        {/* What's covered */}
+        <div className="mt-6">
+          <Eyebrow>What stays the same</Eyebrow>
+          <div className="mt-3 space-y-3">
+            {RENEWAL.covers.map((c) => (
+              <div key={c.code} className="flex items-center justify-between rounded-2xl p-4" style={{ backgroundColor: coverColor(c.code) }}>
+                <div className="flex items-center gap-3">
+                  <span
+                    className="inline-flex items-center justify-center rounded-md px-2 py-1 text-[10px] font-black"
+                    style={{ backgroundColor: C.ink, color: "white" }}
+                  >
+                    {c.code}
+                  </span>
+                  <p className="text-sm font-bold" style={{ color: C.ink }}>{c.name}</p>
+                </div>
+                <p className="text-sm font-black tabular-nums" style={{ color: C.ink }}>{fmtLimit(c.limit)}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="mt-6 rounded-3xl p-5" style={{ backgroundColor: C.mint }}>
+          <Info size={18} style={{ color: C.ink }} />
+          <p className="mt-2 text-sm" style={{ color: C.ink }}>
+            <span className="font-bold">No re-declaration needed.</span> Your details haven't changed since last year, so you're good to go straight to payment.
+          </p>
+        </div>
+
+        <p className="mt-5 text-center text-xs" style={{ color: C.ink, opacity: 0.6 }}>
+          This offer is valid until {fmtDate(RENEWAL.validUntil)}
+        </p>
+      </div>
+
+      <StickyCTA>
+        <div className="space-y-2">
+          <PillButton onClick={onAccept} className="w-full">
+            Accept & continue to payment
+          </PillButton>
+          <button onClick={onClose} className="w-full text-center text-sm font-bold" style={{ color: C.ink, opacity: 0.7 }}>
+            Maybe later
+          </button>
+        </div>
+      </StickyCTA>
+    </div>
+  );
+}
+
+function RenewalPay({ onComplete, onBack }) {
+  const [card, setCard] = useState({ number: "4242 4242 4242 4242", exp: "12/28", cvv: "123", name: CUSTOMER.fullName });
+  const [processing, setProcessing] = useState(false);
+
+  const submit = () => {
+    setProcessing(true);
+    setTimeout(onComplete, 1700);
+  };
+
+  return (
+    <div className="min-h-screen pb-32" style={{ backgroundColor: C.cream }}>
+      <PageBar onBack={onBack} title="Payment" />
+      <div className="mx-auto max-w-md px-5">
+        <Eyebrow>Step 2 of 2</Eyebrow>
+        <H1 className="mt-1">Pay {fmt(RENEWAL.newPremium)}</H1>
+        <p className="mt-3 text-base" style={{ color: C.ink, opacity: 0.75 }}>
+          Same card on file? Tap pay. Or use a different one below.
+        </p>
+
+        <div className="mt-6 flex items-center gap-3 rounded-2xl bg-white p-4" style={{ border: `1px solid ${C.hairline2}` }}>
+          <div className="flex h-10 w-14 items-center justify-center rounded-md" style={{ backgroundColor: C.ink }}>
+            <CreditCard size={16} className="text-white" />
+          </div>
+          <div className="flex-1">
+            <p className="text-sm font-bold" style={{ color: C.ink }}>Visa ending 4242</p>
+            <p className="text-xs" style={{ color: C.ink, opacity: 0.6 }}>Saved on your account</p>
+          </div>
+          <span className="rounded-full px-2 py-0.5 text-[10px] font-bold" style={{ backgroundColor: C.mint, color: C.ink }}>
+            Default
+          </span>
+        </div>
+
+        <details className="mt-4">
+          <summary className="cursor-pointer text-sm font-bold underline" style={{ color: C.ink }}>
+            Use a different card
+          </summary>
+          <div className="mt-4 space-y-3">
+            <Field label="Card number">
+              <TextInput value={card.number} onChange={(v) => setCard({ ...card, number: v })} />
+            </Field>
+            <div className="grid grid-cols-2 gap-3">
+              <Field label="Expiry">
+                <TextInput value={card.exp} onChange={(v) => setCard({ ...card, exp: v })} />
+              </Field>
+              <Field label="CVV">
+                <TextInput value={card.cvv} onChange={(v) => setCard({ ...card, cvv: v })} />
+              </Field>
+            </div>
+            <Field label="Name on card">
+              <TextInput value={card.name} onChange={(v) => setCard({ ...card, name: v })} />
+            </Field>
+          </div>
+        </details>
+
+        <div
+          className="mt-6 flex items-center gap-2 rounded-2xl p-4"
+          style={{ backgroundColor: "white", border: `1px solid ${C.hairline}` }}
+        >
+          <Lock size={16} style={{ color: C.ink, opacity: 0.7 }} />
+          <p className="text-xs font-medium" style={{ color: C.ink, opacity: 0.8 }}>
+            Demo only · No real card will be charged
+          </p>
+        </div>
+      </div>
+
+      <StickyCTA>
+        <PillButton
+          onClick={submit}
+          disabled={processing}
+          className="w-full"
+          icon={processing ? Loader2 : ArrowRight}
+        >
+          {processing ? "Processing…" : `Pay ${fmt(RENEWAL.newPremium)} & renew`}
+        </PillButton>
+      </StickyCTA>
+    </div>
+  );
+}
+
+function RenewalSuccess({ onClose }) {
+  return (
+    <div className="min-h-screen" style={{ backgroundColor: C.mint }}>
+      <PageBar onBack={onClose} transparent />
+      <div className="mx-auto max-w-md px-5 pb-12">
+        <div className="flex h-20 w-20 items-center justify-center rounded-full" style={{ backgroundColor: C.ink }}>
+          <CheckCircle2 size={36} strokeWidth={2.2} className="text-white" />
+        </div>
+        <H1 className="mt-6">Renewed.</H1>
+        <p className="mt-4 text-lg font-medium" style={{ color: C.ink }}>
+          Your cover continues seamlessly through to {fmtDate(RENEWAL.expiry)}. New documents are on their way to {CUSTOMER.email}.
+        </p>
+
+        <div className="mt-8 rounded-3xl bg-white p-5" style={{ border: `1px solid ${C.hairline2}` }}>
+          <Eyebrow>New term</Eyebrow>
+          <p
+            className="mt-1 leading-tight"
+            style={{ fontFamily: "Fraunces, serif", fontWeight: 900, fontSize: "22px", color: C.ink, fontVariationSettings: "'SOFT' 100" }}
+          >
+            POL-2026-000201
+          </p>
+          <div className="mt-4 space-y-1.5 text-sm">
+            <Row label="Period" value={`${fmtDate(RENEWAL.effective)} – ${fmtDate(RENEWAL.expiry)}`} />
+            <Row label="Total paid" value={fmt(RENEWAL.newPremium)} />
+            <Row label="Status" value="Active" />
+          </div>
+        </div>
+
+        <div className="mt-8">
+          <PillButton onClick={onClose} className="w-full">Back to home</PillButton>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* =========================================================
+   FLOW: CLAIM
+   ========================================================= */
+function ClaimForm({ onSubmit, onBack }) {
+  const [data, setData] = useState({ type: "", date: "", description: "", thirdParty: false, thirdPartyDetails: "" });
+  const [submitted, setSubmitted] = useState(false);
+  const update = (k, v) => setData({ ...data, [k]: v });
+  const valid = data.type && data.date && data.description;
+
+  const submit = () => {
+    setSubmitted(true);
+    setTimeout(() => onSubmit({
+      kind: "Claim",
+      subject: `${data.type} — ${fmtDate(new Date(data.date))}`,
+      data,
+    }), 1200);
+  };
+
+  if (submitted) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center px-5" style={{ backgroundColor: C.mint }}>
+        <Loader2 size={48} className="animate-spin" style={{ color: C.ink }} />
+        <p className="mt-4 text-base font-bold" style={{ color: C.ink }}>Submitting your notification…</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen pb-32" style={{ backgroundColor: C.cream }}>
+      <PageBar onBack={onBack} title="File a claim" />
+      <div className="mx-auto max-w-md px-5">
+        <div className="-mx-5 -mt-2 px-5 pb-6 pt-2" style={{ backgroundColor: C.orange }}>
+          <Eyebrow color={C.ink}>Claim notification</Eyebrow>
+          <H1 className="mt-2 text-white">Tell us what happened</H1>
+          <p className="mt-3 text-base font-medium text-white/90">
+            This isn't a formal claim yet — it's a heads-up so we can guide you through what's next.
+          </p>
+        </div>
+
+        <div className="mt-6 space-y-5">
+          <Field label="Type of incident" required>
+            <SelectInput
+              value={data.type}
+              onChange={(v) => update("type", v)}
+              options={[
+                { value: "PI", label: "Professional Indemnity matter (advice / services questioned)" },
+                { value: "PL", label: "Public Liability incident (injury or property damage)" },
+                { value: "SL", label: "Statutory Liability matter (regulatory investigation)" },
+                { value: "Other", label: "I'm not sure — please advise" },
+              ]}
+              placeholder="Pick the closest match"
+            />
+          </Field>
+
+          <Field label="When did it happen?" required>
+            <TextInput type="date" value={data.date} onChange={(v) => update("date", v)} />
+          </Field>
+
+          <Field label="Briefly describe what happened" required hint="Just the basics — we'll ask follow-ups">
+            <textarea
+              value={data.description}
+              onChange={(e) => update("description", e.target.value)}
+              placeholder="What occurred, who was involved, any losses being claimed…"
+              rows={4}
+              className="w-full rounded-2xl border bg-white px-4 py-3.5 text-base font-medium outline-none focus:border-current"
+              style={{ borderColor: C.hairline, color: C.ink }}
+            />
+          </Field>
+
+          <div className="rounded-2xl border bg-white p-4" style={{ borderColor: C.hairline }}>
+            <ToggleRow label="Is a third party involved?" desc="Client, contractor, or member of the public" on={data.thirdParty} />
+            <button
+              onClick={() => update("thirdParty", !data.thirdParty)}
+              className="hidden"
+            />
+          </div>
+
+          <button
+            className="flex w-full items-center justify-center gap-2 rounded-2xl border-2 border-dashed bg-white p-5 text-sm font-bold"
+            style={{ borderColor: C.hairline, color: C.ink, opacity: 0.7 }}
+          >
+            <Camera size={16} /> Attach photos or files (optional)
+          </button>
+
+          <div className="rounded-2xl p-4" style={{ backgroundColor: C.purpleSoft }}>
+            <Info size={16} style={{ color: C.ink }} />
+            <p className="mt-2 text-xs" style={{ color: C.ink }}>
+              <span className="font-bold">Important:</span> Don't admit liability or settle anything yourself. We'll guide you through the right next steps.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <StickyCTA>
+        <PillButton onClick={submit} disabled={!valid} className="w-full">
+          Submit notification
+        </PillButton>
+      </StickyCTA>
+    </div>
+  );
+}
+
+/* =========================================================
+   FLOW: SUPPORT
+   ========================================================= */
+function SupportForm({ onSubmit, onBack }) {
+  const [data, setData] = useState({ category: "", subject: "", message: "" });
+  const [submitted, setSubmitted] = useState(false);
+  const update = (k, v) => setData({ ...data, [k]: v });
+  const valid = data.category && data.subject && data.message;
+
+  const submit = () => {
+    setSubmitted(true);
+    setTimeout(() => onSubmit({
+      kind: "Support",
+      subject: data.subject,
+      data,
+    }), 800);
+  };
+
+  if (submitted) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center px-5" style={{ backgroundColor: C.mint }}>
+        <Loader2 size={48} className="animate-spin" style={{ color: C.ink }} />
+        <p className="mt-4 text-base font-bold" style={{ color: C.ink }}>Sending your message…</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen pb-32" style={{ backgroundColor: C.cream }}>
+      <PageBar onBack={onBack} title="Send a message" />
+      <div className="mx-auto max-w-md px-5">
+        <Eyebrow>Get in touch</Eyebrow>
+        <H1 className="mt-1">How can we help?</H1>
+
+        <div className="mt-6 space-y-5">
+          <Field label="What's it about?" required>
+            <SelectInput
+              value={data.category}
+              onChange={(v) => update("category", v)}
+              options={[
+                { value: "billing", label: "Billing or payment question" },
+                { value: "cover", label: "Question about my cover" },
+                { value: "docs", label: "Need a document or info" },
+                { value: "complaint", label: "Make a complaint" },
+                { value: "other", label: "Something else" },
+              ]}
+              placeholder="Pick a category"
+            />
+          </Field>
+          <Field label="Subject" required>
+            <TextInput value={data.subject} onChange={(v) => update("subject", v)} placeholder="Brief summary" />
+          </Field>
+          <Field label="Your message" required>
+            <textarea
+              value={data.message}
+              onChange={(e) => update("message", e.target.value)}
+              rows={5}
+              placeholder="Tell us what you need…"
+              className="w-full rounded-2xl border bg-white px-4 py-3.5 text-base font-medium outline-none focus:border-current"
+              style={{ borderColor: C.hairline, color: C.ink }}
+            />
+          </Field>
+        </div>
+      </div>
+
+      <StickyCTA>
+        <PillButton onClick={submit} disabled={!valid} className="w-full" icon={Send}>
+          Send message
+        </PillButton>
+      </StickyCTA>
+    </div>
+  );
+}
+
+/* =========================================================
+   FLOW: ENDORSEMENT REQUEST
+   ========================================================= */
+function EndorsementRequest({ field, onSubmit, onBack }) {
+  const [newValue, setNewValue] = useState(field.value);
+  const [reason, setReason] = useState("");
+  const [submitted, setSubmitted] = useState(false);
+  const valid = newValue && newValue !== field.value && reason;
+
+  const submit = () => {
+    setSubmitted(true);
+    setTimeout(() => onSubmit({
+      kind: "Endorsement",
+      subject: `Change ${field.label}: ${field.value} → ${newValue}`,
+      data: { field: field.key, oldValue: field.value, newValue, reason },
+    }), 800);
+  };
+
+  if (submitted) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center px-5" style={{ backgroundColor: C.mint }}>
+        <Loader2 size={48} className="animate-spin" style={{ color: C.ink }} />
+        <p className="mt-4 text-base font-bold" style={{ color: C.ink }}>Sending change request…</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen pb-32" style={{ backgroundColor: C.cream }}>
+      <PageBar onBack={onBack} title="Request a change" />
+      <div className="mx-auto max-w-md px-5">
+        <Eyebrow>Endorsement request</Eyebrow>
+        <H1 className="mt-1">Update {field.label.toLowerCase()}</H1>
+        <p className="mt-3 text-base" style={{ color: C.ink, opacity: 0.75 }}>
+          We'll review your request and let you know within 1 business day. Some changes may affect your premium.
+        </p>
+
+        <div className="mt-6 space-y-5">
+          <Field label="Current value">
+            <TextInput value={field.value} readOnly />
+          </Field>
+          <Field label="New value" required>
+            <TextInput value={newValue} onChange={setNewValue} placeholder="What should it be?" />
+          </Field>
+          <Field label="Reason for change" required hint="Helps us process faster">
+            <textarea
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              rows={3}
+              placeholder="e.g. Restructured to a new entity from 1 May…"
+              className="w-full rounded-2xl border bg-white px-4 py-3.5 text-base font-medium outline-none focus:border-current"
+              style={{ borderColor: C.hairline, color: C.ink }}
+            />
+          </Field>
+        </div>
+      </div>
+      <StickyCTA>
+        <PillButton onClick={submit} disabled={!valid} className="w-full">
+          Submit for review
+        </PillButton>
+      </StickyCTA>
+    </div>
+  );
+}
+
+/* =========================================================
+   NOTIFICATIONS DROPDOWN
+   ========================================================= */
+function NotificationsSheet({ open, onClose }) {
+  if (!open) return null;
+  const items = [
+    { icon: Sparkles, color: C.lime, title: "Renewal ready", body: "Your 2026/27 renewal is ready to accept", at: ago(60 * 24 * 5) },
+    { icon: FileText, color: C.mintSoft, title: "Document issued", body: "Schedule for POL-2025-000087", at: ago(60 * 24 * 340) },
+    { icon: Receipt, color: C.purple, title: "Payment received", body: "$1,184 receipted", at: ago(60 * 24 * 340) },
+  ];
+  return (
+    <div className="fixed inset-0 z-50">
+      <div className="absolute inset-0 bg-black/40" onClick={onClose} />
+      <div className="absolute right-0 top-0 h-full w-full max-w-sm bg-white p-5 overflow-y-auto">
+        <div className="flex items-center justify-between">
+          <H2>Notifications</H2>
+          <button
+            onClick={onClose}
+            className="flex h-9 w-9 items-center justify-center rounded-full"
+            style={{ backgroundColor: C.bg }}
+          >
+            <X size={16} style={{ color: C.ink }} />
+          </button>
+        </div>
+        <div className="mt-5 space-y-3">
+          {items.map((n, i) => {
+            const Icon = n.icon;
+            return (
+              <div key={i} className="flex gap-3 rounded-2xl p-3" style={{ backgroundColor: C.bg }}>
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full" style={{ backgroundColor: n.color }}>
+                  <Icon size={16} style={{ color: C.ink }} />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-bold" style={{ color: C.ink }}>{n.title}</p>
+                  <p className="text-xs" style={{ color: C.ink, opacity: 0.7 }}>{n.body}</p>
+                  <p className="mt-1 text-[10px] font-bold uppercase tracking-wider" style={{ color: C.ink, opacity: 0.5 }}>{relTime(n.at)}</p>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* =========================================================
+   TOAST
+   ========================================================= */
+function Toast({ message, onClose }) {
+  useEffect(() => {
+    if (!message) return;
+    const t = setTimeout(onClose, 2800);
+    return () => clearTimeout(t);
+  }, [message, onClose]);
+  if (!message) return null;
+  return (
+    <div className="fixed left-1/2 top-6 z-50 -translate-x-1/2 rounded-full px-5 py-3 shadow-xl" style={{ backgroundColor: C.ink }}>
+      <p className="text-sm font-bold text-white">{message}</p>
+    </div>
+  );
+}
+
+/* =========================================================
+   MAIN APP
+   ========================================================= */
+export default function App() {
+  const [screen, setScreen] = useState("login");
+  const [tab, setTab] = useState("home");
+  const [policyDetailId, setPolicyDetailId] = useState(null);
+  const [endorsementField, setEndorsementField] = useState(null);
+  const [customer, setCustomer] = useState(CUSTOMER);
+  const [tickets, setTickets] = useState([]);
+  const [showNotifs, setShowNotifs] = useState(false);
+  const [toast, setToast] = useState("");
+
+  const handleLogin = () => {
+    setScreen("portal");
+    setTab("home");
+  };
+
+  const handleLogout = () => setScreen("login");
+
+  const goTab = (id) => { setTab(id); setScreen("portal"); };
+
+  const acceptRenewal = () => setScreen("renewal-review");
+
+  const submitRequest = (req) => {
+    const id = `REQ-${new Date().getFullYear()}-${String(tickets.length + 1).padStart(4, "0")}`;
+    setTickets([{ id, status: "Open", createdAt: TODAY, ...req }, ...tickets]);
+    setScreen("portal");
+    setTab("help");
+    setToast(`✓ ${req.kind === "Claim" ? "Claim notification" : req.kind === "Endorsement" ? "Change request" : "Message"} submitted (${id})`);
+  };
+
+  const handleDownload = (file) => setToast(`📥 Downloading ${file}…`);
+
+  /* Routing */
+  let body;
+  if (screen === "login") {
+    body = <Login onLogin={handleLogin} />;
+  } else if (screen === "renewal-review") {
+    body = <RenewalReview onAccept={() => setScreen("renewal-pay")} onClose={() => setScreen("portal")} />;
+  } else if (screen === "renewal-pay") {
+    body = <RenewalPay onComplete={() => setScreen("renewal-done")} onBack={() => setScreen("renewal-review")} />;
+  } else if (screen === "renewal-done") {
+    body = <RenewalSuccess onClose={() => { setScreen("portal"); setTab("home"); }} />;
+  } else if (screen === "claim") {
+    body = <ClaimForm onSubmit={submitRequest} onBack={() => setScreen("portal")} />;
+  } else if (screen === "support") {
+    body = <SupportForm onSubmit={submitRequest} onBack={() => setScreen("portal")} />;
+  } else if (screen === "endorsement") {
+    body = <EndorsementRequest field={endorsementField} onSubmit={submitRequest} onBack={() => setScreen("portal")} />;
+  } else if (screen === "policy-detail") {
+    body = (
+      <PolicyDetailScreen
+        policyId={policyDetailId}
+        onBack={() => { setScreen("portal"); setTab("policies"); }}
+        onDocs={() => { setScreen("portal"); setTab("docs"); }}
+        onRequestChange={() => { setScreen("portal"); setTab("profile"); }}
+      />
+    );
+  } else {
+    // portal with bottom nav
+    if (tab === "home") {
+      body = (
+        <HomeScreen
+          onNavigate={goTab}
+          onAcceptRenewal={acceptRenewal}
+          onPolicyDetail={(id) => { setPolicyDetailId(id); setScreen("policy-detail"); }}
+          onClaimStart={() => setScreen("claim")}
+          onSupportStart={() => setScreen("support")}
+          onShowNotifications={() => setShowNotifs(true)}
+          onShowSettings={() => goTab("profile")}
+        />
+      );
+    } else if (tab === "policies") {
+      body = (
+        <PoliciesScreen
+          onPolicyDetail={(id) => { setPolicyDetailId(id); setScreen("policy-detail"); }}
+          onShowNotifications={() => setShowNotifs(true)}
+          onShowSettings={() => goTab("profile")}
+        />
+      );
+    } else if (tab === "docs") {
+      body = (
+        <DocsScreen
+          onShowNotifications={() => setShowNotifs(true)}
+          onShowSettings={() => goTab("profile")}
+          onDownload={handleDownload}
+        />
+      );
+    } else if (tab === "profile") {
+      body = (
+        <ProfileScreen
+          customer={customer}
+          setCustomer={setCustomer}
+          onSave={() => setToast("✓ Changes saved")}
+          onRequestEndorsement={(key, label, value) => { setEndorsementField({ key, label, value }); setScreen("endorsement"); }}
+          onShowNotifications={() => setShowNotifs(true)}
+          onShowSettings={() => {}}
+          onLogout={handleLogout}
+        />
+      );
+    } else if (tab === "help") {
+      body = (
+        <HelpScreen
+          onShowNotifications={() => setShowNotifs(true)}
+          onShowSettings={() => goTab("profile")}
+          onClaimStart={() => setScreen("claim")}
+          onSupportStart={() => setScreen("support")}
+          tickets={tickets}
+        />
+      );
+    }
+  }
+
+  const showBottomNav = screen === "portal";
+  const badges = {
+    home: RENEWAL ? 1 : 0,
+    help: tickets.length,
+  };
+
+  return (
+    <div className="min-h-screen" style={{ fontFamily: "Manrope, sans-serif", color: C.ink }}>
+      {/* Google fonts */}
+      <link rel="preconnect" href="https://fonts.googleapis.com" />
+      <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
+      <link
+        href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght,SOFT@9..144,400..900,0..100&family=Manrope:wght@400;500;600;700;800&display=swap"
+        rel="stylesheet"
+      />
+      {body}
+      {showBottomNav && <BottomNav active={tab} onChange={goTab} badges={badges} />}
+      <NotificationsSheet open={showNotifs} onClose={() => setShowNotifs(false)} />
+      <Toast message={toast} onClose={() => setToast("")} />
+    </div>
+  );
+}
+
+const root = ReactDOM.createRoot(document.getElementById('root'));
+root.render(<App />);
+</script>
+</body>
+</html>
